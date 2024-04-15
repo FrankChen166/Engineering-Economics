@@ -21,6 +21,24 @@ mongoose
     console.log(e);
   });
 
+const questions = [
+  {
+    question: "以下哪个是 JavaScript 的一种框架？",
+    options: ["A. React", "B. Vue", "C. Angular", "D. Django"],
+    answer: "A",
+  },
+  {
+    question: "下面哪个是世界上最高的山峰？",
+    options: ["A. 乔戈里峰", "B. 喜马拉雅山", "C. 峨眉山", "D. 摩天峰"],
+    answer: "B",
+  },
+  {
+    question: "哪个是最流行的编程语言？",
+    options: ["A. Python", "B. Java", "C. C++", "D. Ruby"],
+    answer: "A",
+  },
+];
+
 app.get("/", (req, res) => {
   res.send("this is a home page");
 });
@@ -75,7 +93,37 @@ app.get("/home", (req, res) => {
 });
 
 app.get("/ex", (req, res) => {
-  res.render("ex");
+  res.render("ex", { questions });
+});
+
+app.post("/ex/submit", (req, res) => {
+  const { answers } = req.body;
+  let score = 0;
+
+  // 输出用户提交的答案以及正确答案
+  console.log("User Answers:", answers);
+  console.log(
+    "Correct Answers:",
+    questions.map((question) => question.answer)
+  );
+
+  // 检查用户答案并计算得分
+  answers.forEach((userAnswer, index) => {
+    console.log(
+      `Question ${index + 1}: User Answer - ${userAnswer}, Correct Answer - ${
+        questions[index].answer
+      }`
+    );
+    if (userAnswer === questions[index].answer) {
+      score += 1;
+    }
+  });
+
+  // 在控制台打印用户得分，可以根据需要将其保存到用户的数据库记录中
+  console.log("User Score:", score);
+
+  // 发送用户的得分作为响应
+  res.send({ score });
 });
 
 app.listen(3000, () => {

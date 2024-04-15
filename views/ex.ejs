@@ -7,5 +7,23 @@
   </head>
   <body>
     <h1>題目</h1>
+    <form action="/ex/submit" method="post">
+      <% questions.forEach((question, index) => { %>
+      <div>
+        <p><%= question.question %></p>
+        <% question.options.forEach((option) => { %>
+        <input
+          type="radio"
+          id="<%= 'option-' + index %>"
+          name="answers[<%= index %>]"
+          value="<%= option.charAt(0) %>"
+          required
+        />
+        <label for="<%= 'option-' + index %>"><%= option %></label><br />
+        <% }); %>
+      </div>
+      <% }); %>
+      <button type="submit">Submit</button>
+    </form>
   </body>
 </html>
