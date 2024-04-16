@@ -5,6 +5,7 @@ const session = require("express-session");
 const app = express();
 
 const User = require("./models/user");
+const UserInfo = require("./models/userInfo");
 
 app.set("view engine", "ejs");
 app.set("views", "views");
@@ -96,33 +97,45 @@ app.get("/ex", (req, res) => {
   res.render("ex", { questions });
 });
 
-app.post("/ex/submit", (req, res) => {
+app.post("/ex/submit", async (req, res) => {
   const { answers } = req.body;
   let score = 0;
 
-  // 输出用户提交的答案以及正确答案
-  console.log("User Answers:", answers);
-  console.log(
-    "Correct Answers:",
-    questions.map((question) => question.answer)
-  );
-
   // 检查用户答案并计算得分
   answers.forEach((userAnswer, index) => {
-    console.log(
-      `Question ${index + 1}: User Answer - ${userAnswer}, Correct Answer - ${
-        questions[index].answer
-      }`
-    );
     if (userAnswer === questions[index].answer) {
       score += 1;
     }
   });
 
-  // 在控制台打印用户得分，可以根据需要将其保存到用户的数据库记录中
-  console.log("User Score:", score);
+  const userIdFromSession = req.session.user_id;
 
-  // 发送用户的得分作为响应
+  try {
+    let userInfo = await UserInfo.findOne({ userId: userIdFromSession });
+    if (!userInfo) {
+      // 如果找不到关联的 UserInfo 对象，则创建一个新的
+      userInfo = new UserInfo({
+        userId: userIdFromSession, // 将关联的 User 的 _id 存储在 userId 字段中
+        testTimes: 0,
+        testGrade: 0,
+        testDate: null,
+      });
+    }
+
+    // 更新用户的测试信息
+    userInfo.testTimes += 1;
+    userInfo.testGrade = score;
+    userInfo.testDate = new Date();
+    await userInfo.save();
+
+    // 更新用户模型中的 userInfo 字段
+    await User.findByIdAndUpdate(userIdFromSession, { userInfo: userInfo._id });
+  } catch (error) {
+    console.log(error);
+    // 处理错误
+  }
+
+  console.log("User Score:", score);
   res.send({ score });
 });
 
