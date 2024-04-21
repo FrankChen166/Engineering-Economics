@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>成績</title>
+  </head>
+  <body>
+    <h1>
+      <%= user.username %>同學你的第<%=userInfo.testTimes.length
+      %>次測驗分數為<%= userInfo.testGrade[userInfo.testTimes.length - 1]%>
+    </h1>
+    <a href="/home">回到主頁</a>
+  </body>
+</html>
