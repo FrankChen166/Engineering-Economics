@@ -1,0 +1,27 @@
+<!-- views/upload.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Questions</title>
+  </head>
+  <body>
+    <h1>Upload Questions</h1>
+    <form action="/upload" method="POST">
+      <label for="question">Question:</label><br />
+      <input type="text" id="question" name="question" required /><br />
+      <label for="option1">Option 1:</label><br />
+      <input type="text" id="option1" name="options[]" required /><br />
+      <label for="option2">Option 2:</label><br />
+      <input type="text" id="option2" name="options[]" required /><br />
+      <label for="option3">Option 3:</label><br />
+      <input type="text" id="option3" name="options[]" required /><br />
+      <label for="option4">Option 4:</label><br />
+      <input type="text" id="option4" name="options[]" required /><br />
+      <label for="answer">Answer:</label><br />
+      <input type="text" id="answer" name="answer" required /><br />
+      <button type="submit">Submit</button>
+    </form>
+  </body>
+</html>

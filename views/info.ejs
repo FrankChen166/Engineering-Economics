@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= user.username %>的資料</title>
+  </head>
+  <body>
+    <div>
+      <table>
+        <tr>
+          <th>班級 : <%= user.CLASS %></th>
+        </tr>
+        <tr>
+          <th>姓名 : <%= user.username %></th>
+        </tr>
+        <tr>
+          <th>學號 : <%= user.studentId %></th>
+        </tr>
+        <% if (user.userInfo && user.userInfo.length > 0) { %>
+        <tr>
+          <th>
+            第 <%= user.userInfo[0].testTimes[0] %> 次作業成績 : <%=
+            user.userInfo[0].testGrade[0] %>
+          </th>
+        </tr>
+        <% if (user.userInfo[0].testTimes.length > 1) { %>
+        <tr>
+          <th>
+            第 <%= user.userInfo[0].testTimes[1] %> 次作業成績 : <%=
+            user.userInfo[0].testGrade[1] %>
+          </th>
+        </tr>
+        <% } else { %>
+        <tr>
+          <th>第 2 次作業成績 : N/A</th>
+        </tr>
+        <% } %> <% } else { %>
+        <tr>
+          <th colspan="2">暫無作業成績</th>
+        </tr>
+        <% } %>
+      </table>
+      <a href="/home">回到主頁</a>
+    </div>
+  </body>
+</html>

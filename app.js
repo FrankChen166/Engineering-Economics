@@ -7,6 +7,7 @@ const app = express();
 
 const User = require("./models/user");
 const UserInfo = require("./models/userInfo");
+const Question = require("./models/questions");
 
 app.set("view engine", "ejs");
 app.set("views", "views");
@@ -24,23 +25,23 @@ mongoose
     console.log(e);
   });
 
-const questions = [
-  {
-    question: "以下哪个是 JavaScript 的一种框架？",
-    options: ["A. React", "B. Vue", "C. Angular", "D. Django"],
-    answer: "A",
-  },
-  {
-    question: "下面哪个是世界上最高的山峰？",
-    options: ["A. 乔戈里峰", "B. 喜马拉雅山", "C. 峨眉山", "D. 摩天峰"],
-    answer: "B",
-  },
-  {
-    question: "哪个是最流行的编程语言？",
-    options: ["A. Python", "B. Java", "C. C++", "D. Ruby"],
-    answer: "A",
-  },
-];
+// const questions = [
+//   {
+//     question: "以下哪个是 JavaScript 的一种框架？",
+//     options: ["A. React", "B. Vue", "C. Angular", "D. Django"],
+//     answer: "A",
+//   },
+//   {
+//     question: "下面哪个是世界上最高的山峰？",
+//     options: ["A. 乔戈里峰", "B. 喜马拉雅山", "C. 峨眉山", "D. 摩天峰"],
+//     answer: "B",
+//   },
+//   {
+//     question: "哪个是最流行的编程语言？",
+//     options: ["A. Python", "B. Java", "C. C++", "D. Ruby"],
+//     answer: "A",
+//   },
+// ];
 
 app.get("/", (req, res) => {
   res.send("this is a home page");
@@ -106,22 +107,53 @@ app.get("/home", (req, res) => {
   res.render("home", { username });
 });
 
-app.get("/ex", (req, res) => {
-  if (!req.session.user_id) {
-    return res.redirect("/login");
-  }
-  res.render("ex", { questions });
+app.get("/upload", (req, res) => {
+  res.render("upload");
 });
-app.post("/ex/submit", async (req, res) => {
-  const { answers } = req.body;
-  let score = 0;
-  if (!req.session.user_id) {
-    return res.redirect("/login");
-  }
 
-  const userIdFromSession = req.session.user_id;
-
+// POST请求，处理上传的题目和答案
+app.post("/upload", async (req, res) => {
   try {
+    const { question, options, answer } = req.body;
+    // 创建题目对象
+    const newQuestion = new Question({
+      question,
+      options,
+      answer,
+    });
+    // 保存题目到数据库
+    await newQuestion.save();
+    res.redirect("/upload"); // 上传成功后重定向到上传页面
+  } catch (error) {
+    console.error("Error uploading question:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+app.get("/ex", async (req, res) => {
+  try {
+    if (!req.session.user_id) {
+      return res.redirect("/login");
+    }
+    // 从数据库中获取所有题目
+    const questions = await Question.find({});
+    res.render("ex", { questions });
+  } catch (error) {
+    console.error("Error rendering exam page:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+app.post("/ex/submit", async (req, res) => {
+  try {
+    const { answers } = req.body;
+    let score = 0;
+    if (!req.session.user_id) {
+      return res.redirect("/login");
+    }
+
+    const userIdFromSession = req.session.user_id;
+
     // 检查用户是否已经有了 UserInfo 记录
     let userInfo = await UserInfo.findOne({ userId: userIdFromSession });
 
@@ -135,12 +167,8 @@ app.post("/ex/submit", async (req, res) => {
       });
     }
 
-    // 检查用户是否已经考试两次
-    // if (userInfo.testTimes.length >= 2) {
-    //   return res.send("您已经考试两次，不能再参加考试。");
-    // }
-
     // 检查用户答案并计算得分
+    const questions = await Question.find({});
     answers.forEach((userAnswer, index) => {
       if (userAnswer === questions[index].answer) {
         score += 1;
@@ -170,13 +198,9 @@ app.post("/ex/submit", async (req, res) => {
 
     res.redirect(`/result?userId=${user._id}&userInfoId=${userInfo._id}`);
   } catch (error) {
-    console.log(error);
-    // 处理错误
+    console.error("Error submitting exam:", error);
     res.status(500).send("Internal Server Error");
-    return;
   }
-
-  console.log("User Score:", score);
 });
 
 app.get("/result", async (req, res) => {
@@ -189,6 +213,14 @@ app.get("/result", async (req, res) => {
     (info) => info._id.toString() === userInfoId
   );
   res.render("result", { user, userInfo });
+});
+
+app.get("/info", async (req, res) => {
+  const userId = req.session.user_id;
+  console.log(userId);
+  const user = await User.findById(userId).populate("userInfo");
+  res.render("info", { user });
+  // res.send(user.userInfo[0].testTimes);
 });
 
 app.listen(3000, () => {
