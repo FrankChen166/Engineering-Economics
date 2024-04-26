@@ -17,25 +17,20 @@
         <tr>
           <th>學號 : <%= user.studentId %></th>
         </tr>
-        <% if (user.userInfo && user.userInfo.length > 0) { %>
+        <% if (user.userInfo && user.userInfo.length > 0 &&
+        user.userInfo[0].tests.length > 0) { %> <%
+        user.userInfo[0].tests.forEach((test, index) => { %>
         <tr>
           <th>
-            第 <%= user.userInfo[0].testTimes[0] %> 次作業成績 : <%=
-            user.userInfo[0].testGrade[0] %>
+            第 <%= index + 1 %> 次作業成績 : <%= test.testGrade %><a
+              href="/info/<%= index  %>"
+            >
+              Review</a
+            >
           </th>
         </tr>
-        <% if (user.userInfo[0].testTimes.length > 1) { %>
-        <tr>
-          <th>
-            第 <%= user.userInfo[0].testTimes[1] %> 次作業成績 : <%=
-            user.userInfo[0].testGrade[1] %>
-          </th>
-        </tr>
-        <% } else { %>
-        <tr>
-          <th>第 2 次作業成績 : N/A</th>
-        </tr>
-        <% } %> <% } else { %>
+
+        <% }); %> <% } else { %>
         <tr>
           <th colspan="2">暫無作業成績</th>
         </tr>

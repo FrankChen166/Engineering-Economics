@@ -25,24 +25,6 @@ mongoose
     console.log(e);
   });
 
-// const questions = [
-//   {
-//     question: "以下哪个是 JavaScript 的一种框架？",
-//     options: ["A. React", "B. Vue", "C. Angular", "D. Django"],
-//     answer: "A",
-//   },
-//   {
-//     question: "下面哪个是世界上最高的山峰？",
-//     options: ["A. 乔戈里峰", "B. 喜马拉雅山", "C. 峨眉山", "D. 摩天峰"],
-//     answer: "B",
-//   },
-//   {
-//     question: "哪个是最流行的编程语言？",
-//     options: ["A. Python", "B. Java", "C. C++", "D. Ruby"],
-//     answer: "A",
-//   },
-// ];
-
 app.get("/", (req, res) => {
   res.send("this is a home page");
 });
@@ -83,11 +65,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// app.post("/logout", (req, res) => {
-//   req.session.user_id = null;
-//   res.redirect("/login");
-// });
-
 app.get("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -103,7 +80,7 @@ app.get("/home", (req, res) => {
   if (!req.session.user_id) {
     return res.redirect("/login");
   }
-  console.log({ username });
+
   res.render("home", { username });
 });
 
@@ -161,24 +138,36 @@ app.post("/ex/submit", async (req, res) => {
     if (!userInfo) {
       userInfo = new UserInfo({
         userId: userIdFromSession,
-        testTimes: [],
-        testGrade: [],
-        testDate: [],
+        tests: [],
       });
     }
 
     // 检查用户答案并计算得分
     const questions = await Question.find({});
-    answers.forEach((userAnswer, index) => {
-      if (userAnswer === questions[index].answer) {
+    const testAnswers = [];
+    answers.forEach(async (userAnswer, index) => {
+      const question = questions[index];
+      const isCorrect = userAnswer === question.answer;
+      if (isCorrect) {
         score += 1;
       }
+      // 将答案和正确与否记录到测试答案中
+      testAnswers.push({
+        questionId: question._id,
+        userAnswer,
+        isCorrect,
+      });
     });
 
     // 更新用户考试信息
-    userInfo.testTimes.push(userInfo.testTimes.length + 1); // 每次考试次数加 1
-    userInfo.testGrade.push(score); // 添加当前考试分数
-    userInfo.testDate.push(new Date()); // 添加当前考试日期
+    const newTest = {
+      testTimes: userInfo.tests.length + 1,
+      testGrade: score,
+      testDate: new Date(),
+      answers: testAnswers,
+    };
+
+    userInfo.tests.push(newTest);
     await userInfo.save();
 
     // 将新的 UserInfo 对象关联到用户模型中
@@ -217,10 +206,88 @@ app.get("/result", async (req, res) => {
 
 app.get("/info", async (req, res) => {
   const userId = req.session.user_id;
-  console.log(userId);
-  const user = await User.findById(userId).populate("userInfo");
-  res.render("info", { user });
-  // res.send(user.userInfo[0].testTimes);
+
+  try {
+    const user = await User.findById(userId).populate("userInfo");
+
+    if (
+      !user ||
+      !user.userInfo ||
+      user.userInfo.length === 0 ||
+      !user.userInfo[0].tests ||
+      user.userInfo[0].tests.length === 0
+    ) {
+      return res.status(404).send("User or test information not found");
+    }
+
+    res.render("info", { user });
+  } catch (error) {
+    console.error("Error fetching user info:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// app.get("/review", async (req, res) => {
+//   try {
+//     const userId = req.session.user_id;
+//     const user = await User.findById(userId).populate("userInfo");
+
+//     if (!user || !user.userInfo || user.userInfo.length === 0) {
+//       return res.status(404).send("User or test information not found");
+//     }
+
+//     // 获取用户的测试信息
+//     const userInfo = user.userInfo[0];
+
+//     // 获取用户的测试答案
+//     const testAnswers = userInfo.tests;
+
+//     // 从数据库中获取所有问题的详细信息
+//     const questions = await Question.find({});
+//     res.render("review", { questions, testAnswers });
+
+//   } catch (error) {
+//     console.error("Error fetching review:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
+
+app.get("/info/:testIndex", async (req, res) => {
+  try {
+    const userId = req.session.user_id;
+    const user = await User.findById(userId).populate("userInfo");
+
+    if (!user || !user.userInfo || user.userInfo.length === 0) {
+      return res.status(404).send("User or test information not found");
+    }
+
+    // 获取用户的测试信息
+    const userInfo = user.userInfo[0];
+
+    // 获取用户的所有测试
+    const tests = userInfo.tests;
+
+    // 获取请求的测试索引
+    const testIndex = req.params.testIndex;
+    console.log(testIndex);
+
+    // 检查请求的测试索引是否有效
+    if (testIndex >= tests.length) {
+      return res.status(404).send("Test not found");
+    }
+
+    // 获取请求的测试
+    const requestedTest = tests[testIndex];
+
+    // 从数据库中获取所有问题的详细信息
+    const questions = await Question.find({});
+
+    res.render("review", { requestedTest, questions, testIndex });
+    //res.send(questions);
+  } catch (error) {
+    console.error("Error fetching review:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 app.listen(3000, () => {

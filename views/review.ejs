@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- head 部分 -->
+    <style>
+      .correct {
+        color: green;
+      }
+      .incorrect {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 页面内容 -->
+
+    <div>
+      <h2>Test <%= testIndex %></h2>
+      <p><% questions.forEach((question,index)=>{ %></p>
+      <p><%= question.question%></p>
+      <p><% question.options.forEach((option)=> { %></p>
+      <ul>
+        <li><p><%= option%></p></li>
+      </ul>
+      <%})%>
+      <p>你的答案 : <%= requestedTest.answers[index].userAnswer%></p>
+      <p>正確答案 : <%= question.answer%></p>
+      <%})%>
+    </div>
+
+    <!-- 其他页面内容 -->
+  </body>
+</html>
