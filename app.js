@@ -35,6 +35,13 @@ app.get("/register", (req, res) => {
 
 app.post("/register", async (req, res) => {
   const { username, studentId, CLASS, useraccount, password } = req.body;
+
+  let role = "student"; // 默认为学生角色
+
+  // 检查是否是特定的教师帐户
+  if (studentId === "M11218017") {
+    role = "teacher";
+  }
   const hash = await bcrypt.hash(password, 12);
   const user = new User({
     username,
@@ -42,6 +49,7 @@ app.post("/register", async (req, res) => {
     CLASS,
     useraccount,
     password: hash,
+    role: role,
   });
   await user.save();
   req.session.user_id = user.id;
@@ -84,13 +92,27 @@ app.get("/home", (req, res) => {
   res.render("home", { username });
 });
 
-app.get("/upload", (req, res) => {
+app.get("/upload", async (req, res) => {
+  const userId = req.session.user_id;
+
+  const user = await User.findById(userId);
+
+  if (user.role !== "teacher") {
+    return res.status(403).send("Forbidden");
+  }
   res.render("upload");
 });
 
 // POST请求，处理上传的题目和答案
 app.post("/upload", async (req, res) => {
   try {
+    const userId = req.session.user_id;
+
+    const user = await User.findById(userId);
+
+    if (user.role !== "teacher") {
+      return res.status(403).send("Forbidden");
+    }
     const { question, options, answer } = req.body;
     // 创建题目对象
     const newQuestion = new Question({
@@ -227,31 +249,6 @@ app.get("/info", async (req, res) => {
   }
 });
 
-// app.get("/review", async (req, res) => {
-//   try {
-//     const userId = req.session.user_id;
-//     const user = await User.findById(userId).populate("userInfo");
-
-//     if (!user || !user.userInfo || user.userInfo.length === 0) {
-//       return res.status(404).send("User or test information not found");
-//     }
-
-//     // 获取用户的测试信息
-//     const userInfo = user.userInfo[0];
-
-//     // 获取用户的测试答案
-//     const testAnswers = userInfo.tests;
-
-//     // 从数据库中获取所有问题的详细信息
-//     const questions = await Question.find({});
-//     res.render("review", { questions, testAnswers });
-
-//   } catch (error) {
-//     console.error("Error fetching review:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
-
 app.get("/info/:testIndex", async (req, res) => {
   try {
     const userId = req.session.user_id;
@@ -281,11 +278,50 @@ app.get("/info/:testIndex", async (req, res) => {
 
     // 从数据库中获取所有问题的详细信息
     const questions = await Question.find({});
+    const index = { A: 0, B: 1, C: 2, D: 3 };
 
-    res.render("review", { requestedTest, questions, testIndex });
+    res.render("review", { requestedTest, questions, testIndex, index });
     //res.send(questions);
   } catch (error) {
     console.error("Error fetching review:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+app.get("/allStudent", async (req, res) => {
+  // 将路由路径更正为 /allStudent
+  const userId = req.session.user_id;
+  const user = await User.findById(userId);
+  if (user.role !== "teacher") {
+    // 如果不是老师，重定向到其他页面或显示错误消息
+    return res.status(403).send("Forbidden");
+  }
+  const users = await User.find({});
+
+  res.render("allStudent", { users, userId });
+});
+
+app.get("/allStudent/:id", async (req, res) => {
+  // 检查用户是否登录
+  if (!req.session.user_id) {
+    return res.redirect("/login");
+  }
+
+  try {
+    const userId = req.session.user_id;
+
+    const user = await User.findById(userId);
+
+    if (user.role !== "teacher") {
+      return res.status(403).send("Forbidden");
+    }
+
+    const studentId = req.params.id;
+    const users = await User.findById(studentId).populate("userInfo");
+
+    res.render("allStudentInfo", { users });
+  } catch (error) {
+    console.error("Error fetching student info:", error);
     res.status(500).send("Internal Server Error");
   }
 });

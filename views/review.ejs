@@ -16,16 +16,16 @@
 
     <div>
       <h2>Test <%= testIndex %></h2>
-      <p><% questions.forEach((question,index)=>{ %></p>
-      <p><%= question.question%></p>
-      <p><% question.options.forEach((option)=> { %></p>
+      <% questions.forEach((question, index) => { %>
+      <p><%= question.question %></p>
       <ul>
-        <li><p><%= option%></p></li>
+        <% question.options.forEach((option) => { %>
+        <li><%= option %></li>
+        <% }); %>
       </ul>
-      <%})%>
-      <p>你的答案 : <%= requestedTest.answers[index].userAnswer%></p>
-      <p>正確答案 : <%= question.answer%></p>
-      <%})%>
+      <p>你的答案 : <%= requestedTest.answers[index].userAnswer %></p>
+      <p>正確答案 : <%= question.answer %></p>
+      <% }); %>
     </div>
 
     <!-- 其他页面内容 -->

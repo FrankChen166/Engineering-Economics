@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= users.username %>的資訊</title>
+  </head>
+  <body>
+    <table>
+      <tr>
+        <th>班級 : <%= users.CLASS %></th>
+      </tr>
+      <tr>
+        <th>姓名 : <%= users.username %></th>
+      </tr>
+      <tr>
+        <th>學號 : <%= users.studentId %></th>
+      </tr>
+
+      <% if (users.userInfo && users.userInfo.length > 0 &&
+      users.userInfo[0].tests.length > 0) { %> <%
+      users.userInfo[0].tests.forEach((test, index) => { %>
+      <tr>
+        <th>第 <%= index + 1 %> 次作業成績 : <%= test.testGrade %></th>
+      </tr>
+
+      <% }); %> <% } else { %>
+      <tr>
+        <th colspan="2">暫無作業成績</th>
+      </tr>
+      <% } %>
+    </table>
+  </body>
+</html>
