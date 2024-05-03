@@ -10,12 +10,22 @@ const answerSchema = new Schema({
   },
   userAnswer: {
     type: String,
-    required: true,
   },
   isCorrect: {
     type: Boolean,
+  },
+});
+
+const saveSchema = new Schema({
+  saveTimes: {
+    type: Number,
     required: true,
   },
+  saveDate: {
+    type: Date,
+    required: true,
+  },
+  answers: [answerSchema],
 });
 
 const userInfoSchema = new Schema({
@@ -32,6 +42,7 @@ const userInfoSchema = new Schema({
       answers: [answerSchema],
     },
   ],
+  saves: [saveSchema],
 });
 
 module.exports = mongoose.model("UserInfo", userInfoSchema);

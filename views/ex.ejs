@@ -7,26 +7,88 @@
   </head>
   <body>
     <h1>Exam</h1>
-    <form action="/ex/submit" method="post">
+
+    <!-- 提交表单 -->
+    <form id="submitForm" action="/ex/submit" method="post">
       <% questions.forEach((question, index) => { %>
       <div>
         <p><%= question.question %></p>
         <% const options = ['A', 'B', 'C', 'D']; %> <%
-        question.options.forEach((option, optionIndex) => { %>
-        <input
-          type="radio"
-          id="<%= 'option-' + index + '-' + optionIndex %>"
-          name="answers[<%= index %>]"
-          value="<%= options[optionIndex] %>"
-          required
-        />
-        <label for="<%= 'option-' + index + '-' + optionIndex %>"
-          ><%= options[optionIndex] + '. ' + option %></label
+        question.options.forEach((option, optionIndex) => { %> <input
+        type="radio" id="<%= 'option-' + index + '-' + optionIndex %>"
+        name="answers[<%= index %>]" value="<%= options[optionIndex] %>" <%
+        savedProgress.forEach((progress) => { %> <%
+        progress.answers.forEach((answer) => { %> <% if
+        (answer.questionId.toString() === question._id.toString() &&
+        answer.userAnswer === options[optionIndex]) { %> checked <% } %> <% });
+        %> <% }); %> required />
+        <label for="<%= 'option-' + index + '-' + optionIndex %>">
+          <%= options[optionIndex] + '. ' + option %> </label
         ><br />
         <% }); %>
       </div>
       <% }); %>
       <button type="submit">Submit</button>
     </form>
+
+    <!-- 储存表单 -->
+    <form id="saveForm" action="/ex/save" method="post">
+      <% questions.forEach((question, index) => { %>
+      <div>
+        <% const options = ['A', 'B', 'C', 'D']; %> <%
+        question.options.forEach((option, optionIndex) => { %>
+        <input
+          type="hidden"
+          name="answers[<%= index %>][<%= optionIndex %>]"
+          id="answer_<%= index %>_<%= optionIndex %>"
+          value=""
+        />
+        <% }); %>
+      </div>
+      <% }); %>
+      <button type="submit">Save Progress</button>
+    </form>
+
+    <script>
+      // 将用户选择的答案填充到隐藏字段中
+      const submitForm = document.getElementById("submitForm");
+      const saveForm = document.getElementById("saveForm");
+
+      submitForm.addEventListener("submit", function (event) {
+        event.preventDefault(); // 阻止默认提交行为
+
+        const selectedAnswers = document.querySelectorAll(
+          'input[type="radio"]:checked'
+        );
+        selectedAnswers.forEach(function (input) {
+          const name = input.getAttribute("name");
+          const value = input.value;
+          const [index] = name.match(/\d+/); // 提取选项的索引
+          const optionIndex = parseInt(value.charCodeAt(0)) - 65; // 将选项值转换为索引
+          document.getElementById("answer_" + index + "_" + optionIndex).value =
+            value;
+        });
+
+        submitForm.submit(); // 提交表单
+      });
+
+      saveForm.addEventListener("submit", function (event) {
+        event.preventDefault(); // 阻止默认提交行为
+
+        const selectedAnswers = document.querySelectorAll(
+          'input[type="radio"]:checked'
+        );
+        selectedAnswers.forEach(function (input) {
+          const name = input.getAttribute("name");
+          const value = input.value;
+          const [index] = name.match(/\d+/); // 提取选项的索引
+          const optionIndex = parseInt(value.charCodeAt(0)) - 65; // 将选项值转换为索引
+          document.getElementById("answer_" + index + "_" + optionIndex).value =
+            value;
+        });
+
+        saveForm.submit(); // 提交表单
+      });
+    </script>
   </body>
 </html>
