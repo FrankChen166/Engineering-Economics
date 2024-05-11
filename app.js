@@ -186,6 +186,10 @@ app.get("/ex", async (req, res) => {
     const loadSavedProgress = req.session.loadSavedProgress;
     req.session.loadSavedProgress = false;
     const savedProgress = loadSavedProgress ? userInfo.saves : [];
+    // const savedProgress =
+    //   userInfo.saves.length > 0
+    //     ? userInfo.saves[userInfo.saves.length - 1].answers
+    //     : [];
 
     res.render("ex", { questions, savedProgress });
   } catch (error) {
@@ -207,7 +211,7 @@ app.post("/ex/save", async (req, res) => {
 
     // 创建一个新的 save 对象
     const newSave = {
-      saveTimes: userInfo.saves.length + 1, // 获取当前保存次数
+      saveTimes: userInfo ? userInfo.saves.length + 1 : 1, // 获取当前保存次数
       saveDate: new Date(),
       answers: [],
     };
@@ -215,7 +219,6 @@ app.post("/ex/save", async (req, res) => {
     // 获取所有问题的 ID
     const questionIds = await Question.find({}).select("_id");
 
-    // 遍历表单中的选项，并添加到 newSave.answers 中
     Object.keys(selectedAnswers).forEach((index) => {
       const questionIndex = parseInt(index);
       Object.keys(selectedAnswers[index]).forEach((optionIndex) => {
@@ -238,8 +241,15 @@ app.post("/ex/save", async (req, res) => {
       });
     });
 
-    // 更新用户的保存记录，覆盖上一次的保存记录
-    userInfo.saves.push(newSave);
+    if (userInfo) {
+      userInfo.saves.pop();
+      userInfo.saves.push(newSave);
+    } else {
+      userInfo = new UserInfo({
+        userId: userId,
+        saves: [newSave],
+      });
+    }
 
     // 保存用户信息
     await userInfo.save();
@@ -281,7 +291,9 @@ app.post("/ex/submit", async (req, res) => {
     // 检查用户答案并计算得分
     const questions = await Question.find({});
     const testAnswers = [];
-    answers.forEach(async (userAnswer, index) => {
+
+    for (let index = 0; index < answers.length; index++) {
+      const userAnswer = answers[index];
       const question = questions[index];
       const isCorrect = userAnswer === question.answer;
       if (isCorrect) {
@@ -293,7 +305,7 @@ app.post("/ex/submit", async (req, res) => {
         userAnswer,
         isCorrect,
       });
-    });
+    }
 
     // 更新用户考试信息
     const newTest = {
@@ -306,19 +318,17 @@ app.post("/ex/submit", async (req, res) => {
     userInfo.tests.push(newTest);
     await userInfo.save();
 
-    // 将新的 UserInfo 对象关联到用户模型中
+    // // 将新的 UserInfo 对象关联到用户模型中
     const user = await User.findById(userIdFromSession).populate("userInfo");
 
     const existingUserInfoIndex = user.userInfo.findIndex(
       (info) => info._id.toString() === userInfo._id.toString()
     );
 
-    // 将新的测试结果添加到用户的测试结果数组中
     if (existingUserInfoIndex === -1) {
       user.userInfo.push(userInfo);
     }
 
-    // 保存用户模型
     await user.save();
 
     res.redirect(`/result?userId=${user._id}&userInfoId=${userInfo._id}`);
@@ -342,19 +352,20 @@ app.get("/result", async (req, res) => {
 
 app.get("/info", async (req, res) => {
   const userId = req.session.user_id;
+  console.log(userId);
 
   try {
     const user = await User.findById(userId).populate("userInfo");
-
-    if (
-      !user ||
-      !user.userInfo ||
-      user.userInfo.length === 0 ||
-      !user.userInfo[0].tests ||
-      user.userInfo[0].tests.length === 0
-    ) {
-      return res.status(404).send("User or test information not found");
-    }
+    console.log(user);
+    // if (
+    //   !user ||
+    //   !user.userInfo ||
+    //   user.userInfo.length === 0 ||
+    //   !user.userInfo[0].tests ||
+    //   user.userInfo[0].tests.length === 0
+    // ) {
+    //   return res.status(404).send("User or test information not found");
+    // }
 
     res.render("info", { user });
   } catch (error) {
