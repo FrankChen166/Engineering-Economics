@@ -186,10 +186,6 @@ app.get("/ex", async (req, res) => {
     const loadSavedProgress = req.session.loadSavedProgress;
     req.session.loadSavedProgress = false;
     const savedProgress = loadSavedProgress ? userInfo.saves : [];
-    // const savedProgress =
-    //   userInfo.saves.length > 0
-    //     ? userInfo.saves[userInfo.saves.length - 1].answers
-    //     : [];
 
     res.render("ex", { questions, savedProgress });
   } catch (error) {
@@ -219,27 +215,18 @@ app.post("/ex/save", async (req, res) => {
     // 获取所有问题的 ID
     const questionIds = await Question.find({}).select("_id");
 
-    Object.keys(selectedAnswers).forEach((index) => {
+    for (let index in selectedAnswers) {
       const questionIndex = parseInt(index);
-      Object.keys(selectedAnswers[index]).forEach((optionIndex) => {
+      for (let optionIndex in selectedAnswers[index]) {
         const answer = selectedAnswers[index][optionIndex];
         if (answer) {
-          // 检查 userInfo.tests 数组长度是否足够覆盖当前问题索引
-          if (userInfo.tests.length <= questionIndex) {
-            userInfo.tests.push({}); // 如果不够，则添加空对象
-          }
-          // 获取问题的 _id
           const questionId = questionIds[questionIndex]._id;
           if (questionId) {
-            // 确保问题有 _id 属性
-            newSave.answers.push({
-              questionId,
-              userAnswer: answer,
-            });
+            newSave.answers.push({ questionId, userAnswer: answer });
           }
         }
-      });
-    });
+      }
+    }
 
     if (userInfo) {
       userInfo.saves.pop();
