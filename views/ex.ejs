@@ -10,7 +10,7 @@
 
     <!-- 提交表单 -->
     <form id="submitForm" action="/ex/submit" method="post">
-      <% questions.forEach((question, index) => { %>
+      <% selectedQuestionsContent.forEach((question, index) => { %>
       <div>
         <p><%= question.question %></p>
         <% const options = ['A', 'B', 'C', 'D']; %> <%
@@ -33,7 +33,7 @@
 
     <!-- 储存表单 -->
     <form id="saveForm" action="/ex/save" method="post">
-      <% questions.forEach((question, index) => { %>
+      <% selectedQuestionsContent.forEach((question, index) => { %>
       <div>
         <% const options = ['A', 'B', 'C', 'D']; %> <%
         question.options.forEach((option, optionIndex) => { %>

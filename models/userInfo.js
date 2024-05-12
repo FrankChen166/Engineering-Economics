@@ -11,6 +11,9 @@ const answerSchema = new Schema({
   userAnswer: {
     type: String,
   },
+  correctAnswer: {
+    type: String,
+  },
   isCorrect: {
     type: Boolean,
   },

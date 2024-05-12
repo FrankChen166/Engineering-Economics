@@ -8,6 +8,7 @@ const app = express();
 const User = require("./models/user");
 const UserInfo = require("./models/userInfo");
 const Question = require("./models/questions");
+const SelectQuestion = require("./models/selectQuestion");
 
 app.set("view engine", "ejs");
 app.set("views", "views");
@@ -24,6 +25,15 @@ mongoose
   .catch((e) => {
     console.log(e);
   });
+
+function getRandomQuestions(questions, num) {
+  const selectedQuestions = [];
+  const shuffled = questions.sort(() => 0.5 - Math.random()); // 随机排序
+  for (let i = 0; i < num; i++) {
+    selectedQuestions.push(shuffled[i]); // 选择前 num 个题目
+  }
+  return selectedQuestions;
+}
 
 app.get("/", (req, res) => {
   res.send("this is a home page");
@@ -183,11 +193,29 @@ app.get("/ex", async (req, res) => {
     // 从数据库中获取所有题目
     const questions = await Question.find({});
 
+    let selectQuestions = await SelectQuestion.findOne({ userId });
+
+    if (!selectQuestions) {
+      const randomQuestions = getRandomQuestions(questions, 3);
+      console.log(randomQuestions);
+      selectQuestions = new SelectQuestion({
+        userId: userId,
+        questionIds: randomQuestions.map((question) => question._id),
+      });
+      await selectQuestions.save();
+    }
+
+    const selectedQuestionIds = selectQuestions.questionIds;
+    const selectedQuestionsContent = await Question.find({
+      _id: { $in: selectedQuestionIds },
+    });
+
     const loadSavedProgress = req.session.loadSavedProgress;
     req.session.loadSavedProgress = false;
+    console.log(loadSavedProgress);
     const savedProgress = loadSavedProgress ? userInfo.saves : [];
 
-    res.render("ex", { questions, savedProgress });
+    res.render("ex", { savedProgress, selectedQuestionsContent });
   } catch (error) {
     console.error("Error rendering exam page:", error);
     res.status(500).send("Internal Server Error");
@@ -204,6 +232,7 @@ app.post("/ex/save", async (req, res) => {
     // 找到用户信息
     let userInfo = await UserInfo.findOne({ userId });
     const selectedAnswers = req.body.answers;
+    console.log(selectedAnswers);
 
     // 创建一个新的 save 对象
     const newSave = {
@@ -213,8 +242,11 @@ app.post("/ex/save", async (req, res) => {
     };
 
     // 获取所有问题的 ID
-    const questionIds = await Question.find({}).select("_id");
-
+    // const questionIds = await Question.find({}).select("questionIds");
+    const selectQuestion = await SelectQuestion.findOne({ userId: userId });
+    // console.log(questionIds);
+    const questionIds = selectQuestion.questionIds;
+    // console.log(question);
     for (let index in selectedAnswers) {
       const questionIndex = parseInt(index);
       for (let optionIndex in selectedAnswers[index]) {
@@ -290,6 +322,7 @@ app.post("/ex/submit", async (req, res) => {
       testAnswers.push({
         questionId: question._id,
         userAnswer,
+        correctAnswer: question.answer,
         isCorrect,
       });
     }
@@ -370,30 +403,43 @@ app.get("/info/:testIndex", async (req, res) => {
       return res.status(404).send("User or test information not found");
     }
 
-    // 获取用户的测试信息
     const userInfo = user.userInfo[0];
 
-    // 获取用户的所有测试
     const tests = userInfo.tests;
 
-    // 获取请求的测试索引
     const testIndex = req.params.testIndex;
     console.log(testIndex);
 
-    // 检查请求的测试索引是否有效
     if (testIndex >= tests.length) {
       return res.status(404).send("Test not found");
     }
 
-    // 获取请求的测试
     const requestedTest = tests[testIndex];
+    // console.log(requestedTest);
 
-    // 从数据库中获取所有问题的详细信息
-    const questions = await Question.find({});
+    const questionIds = requestedTest.answers.map(
+      (answer) => answer.questionId
+    );
+    // console.log(questionIds);
+    const questions = await Question.find({ _id: { $in: questionIds } });
+    // console.log(questions);
+    const questionDict = {};
+    questions.forEach((question) => {
+      questionDict[question._id] = question;
+    });
+    console.log(questionDict);
+    requestedTest.answers.forEach((answer) => {
+      answer.question = questionDict[answer.questionId];
+    });
+    // console.log(answer.question);
     const index = { A: 0, B: 1, C: 2, D: 3 };
 
-    res.render("review", { requestedTest, questions, testIndex, index });
-    //res.send(questions);
+    res.render("review", {
+      requestedTest,
+      testIndex,
+      user,
+    });
+    // res.send(user);
   } catch (error) {
     console.error("Error fetching review:", error);
     res.status(500).send("Internal Server Error");
