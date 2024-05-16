@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const session = require("express-session");
 const methodOverride = require("method-override");
+const fs = require("fs");
+const path = require("path");
+
 const app = express();
 
 const User = require("./models/user");
@@ -285,7 +288,6 @@ app.post("/ex/submit", async (req, res) => {
       };
     });
 
-    // 更新答案数组
     testAnswers.forEach((answer) => {
       const index = previousAnswers.findIndex((a) =>
         a.questionId.equals(answer.questionId)
@@ -301,7 +303,7 @@ app.post("/ex/submit", async (req, res) => {
       const newSave = {
         saveTimes: userInfo.saves.length + 1,
         saveDate: new Date(),
-        answers: previousAnswers, // 使用之前保存的答案
+        answers: previousAnswers,
       };
 
       userInfo.saves.push(newSave);
@@ -329,6 +331,31 @@ app.post("/ex/submit", async (req, res) => {
       }
 
       await user.save();
+      const { username, studentId } = user;
+
+      // 将新测试的内容保存到JSON文件中
+      const jsonData = JSON.stringify(
+        {
+          username,
+          studentId,
+          testGrade: newTest.testGrade,
+        },
+        null,
+        2
+      );
+      const filePath = path.join(
+        __dirname,
+        "grade",
+        `${studentId}-${username}.json`
+      );
+
+      fs.writeFile(filePath, jsonData, (err) => {
+        if (err) {
+          console.error("Error writing JSON file:", err);
+        } else {
+          console.log("JSON file has been saved.");
+        }
+      });
 
       res.redirect(
         `/result?userId=${userInfo.userId}&userInfoId=${userInfo._id}`
