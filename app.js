@@ -9,6 +9,7 @@ const User = require("./models/user");
 const UserInfo = require("./models/userInfo");
 const Question = require("./models/questions");
 const SelectQuestion = require("./models/selectQuestion");
+const user = require("./models/user");
 
 app.set("view engine", "ejs");
 app.set("views", "views");
@@ -127,13 +128,17 @@ app.get("/logout", async (req, res) => {
   }
 });
 
-app.get("/home", (req, res) => {
+app.get("/home", async (req, res) => {
+  const userId = req.session.user_id;
+
+  const user = await User.findById(userId);
+
   const { username } = req.session;
   if (!req.session.user_id) {
     return res.redirect("/login");
   }
 
-  res.render("home", { username });
+  res.render("home", { username, user });
 });
 
 app.get("/upload", async (req, res) => {
@@ -175,29 +180,24 @@ app.post("/upload", async (req, res) => {
 
 app.get("/ex", async (req, res) => {
   try {
-    if (!req.session.user_id) {
+    const userId = req.session.user_id;
+    if (!userId) {
       return res.redirect("/login");
     }
-    const userId = req.session.user_id;
-    let userInfo = await UserInfo.findOne({ userId });
 
+    let userInfo = await UserInfo.findOne({ userId });
     if (!userInfo) {
-      // 如果用户信息不存在，则创建新的用户信息对象
       userInfo = new UserInfo({
         userId: userId,
-        saves: [], // 初始化保存记录为空数组
+        saves: [],
       });
       await userInfo.save();
     }
 
-    // 从数据库中获取所有题目
     const questions = await Question.find({});
-
     let selectQuestions = await SelectQuestion.findOne({ userId });
-
     if (!selectQuestions) {
       const randomQuestions = getRandomQuestions(questions, 3);
-      console.log(randomQuestions);
       selectQuestions = new SelectQuestion({
         userId: userId,
         questionIds: randomQuestions.map((question) => question._id),
@@ -210,148 +210,130 @@ app.get("/ex", async (req, res) => {
       _id: { $in: selectedQuestionIds },
     });
 
-    const loadSavedProgress = req.session.loadSavedProgress;
-    req.session.loadSavedProgress = false;
-    console.log(loadSavedProgress);
-    const savedProgress = loadSavedProgress ? userInfo.saves : [];
+    let savedAnswers = [];
+    if (userInfo.saves.length > 0) {
+      const latestSave = userInfo.saves[userInfo.saves.length - 1];
+      savedAnswers = latestSave.answers.map((answer) => ({
+        questionId: answer.questionId.toString(),
+        userAnswer: answer.userAnswer,
+      }));
+    }
 
-    res.render("ex", { savedProgress, selectedQuestionsContent });
+    res.render("ex", { selectedQuestionsContent, savedAnswers });
   } catch (error) {
     console.error("Error rendering exam page:", error);
     res.status(500).send("Internal Server Error");
   }
 });
 
-app.post("/ex/save", async (req, res) => {
-  try {
-    const userId = req.session.user_id;
-    if (!userId) {
-      return res.redirect("/login");
-    }
-    req.session.loadSavedProgress = true;
-    // 找到用户信息
-    let userInfo = await UserInfo.findOne({ userId });
-    const selectedAnswers = req.body.answers;
-    console.log(selectedAnswers);
-
-    // 创建一个新的 save 对象
-    const newSave = {
-      saveTimes: userInfo ? userInfo.saves.length + 1 : 1, // 获取当前保存次数
-      saveDate: new Date(),
-      answers: [],
-    };
-
-    // 获取所有问题的 ID
-    // const questionIds = await Question.find({}).select("questionIds");
-    const selectQuestion = await SelectQuestion.findOne({ userId: userId });
-    // console.log(questionIds);
-    const questionIds = selectQuestion.questionIds;
-    // console.log(question);
-    for (let index in selectedAnswers) {
-      const questionIndex = parseInt(index);
-      for (let optionIndex in selectedAnswers[index]) {
-        const answer = selectedAnswers[index][optionIndex];
-        if (answer) {
-          const questionId = questionIds[questionIndex]._id;
-          if (questionId) {
-            newSave.answers.push({ questionId, userAnswer: answer });
-          }
-        }
-      }
-    }
-
-    if (userInfo) {
-      userInfo.saves.pop();
-      userInfo.saves.push(newSave);
-    } else {
-      userInfo = new UserInfo({
-        userId: userId,
-        saves: [newSave],
-      });
-    }
-
-    // 保存用户信息
-    await userInfo.save();
-
-    res.redirect("/home");
-  } catch (e) {
-    console.error("Error saving progress:", e);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-app.get("/save", async (req, res) => {
-  const userId = req.session.user_id;
-  let userInfo = await UserInfo.findOne({ userId }).populate("saves");
-  res.send(userInfo.saves);
-});
-
 app.post("/ex/submit", async (req, res) => {
   try {
-    const { answers } = req.body;
+    const { answersObject, saveOnly } = req.body;
     let score = 0;
     if (!req.session.user_id) {
       return res.redirect("/login");
     }
 
     const userIdFromSession = req.session.user_id;
+    const answers = JSON.parse(answersObject);
 
-    // 检查用户是否已经有了 UserInfo 记录
     let userInfo = await UserInfo.findOne({ userId: userIdFromSession });
 
-    // 如果没有 UserInfo 记录，则创建新的记录
     if (!userInfo) {
       userInfo = new UserInfo({
         userId: userIdFromSession,
         tests: [],
+        saves: [],
       });
     }
 
-    // 检查用户答案并计算得分
-    const questions = await Question.find({});
-    const testAnswers = [];
+    const selectQuestions = await SelectQuestion.findOne({
+      userId: userIdFromSession,
+    });
 
-    for (let index = 0; index < answers.length; index++) {
-      const userAnswer = answers[index];
-      const question = questions[index];
+    if (!selectQuestions) {
+      return res.status(404).send("Selected questions not found for user.");
+    }
+
+    const selectedQuestionIds = selectQuestions.questionIds;
+    const selectedQuestions = await Question.find({
+      _id: { $in: selectedQuestionIds },
+    });
+
+    const latestSave = userInfo.saves[userInfo.saves.length - 1] || {
+      answers: [],
+    };
+    const previousAnswers = latestSave.answers;
+    console.log(previousAnswers);
+    const testAnswers = selectedQuestions.map((question) => {
+      const previousAnswer = previousAnswers.find((answer) =>
+        answer.questionId.equals(question._id)
+      );
+      const userAnswer =
+        answers[question._id.toString()] ||
+        (previousAnswer && previousAnswer.userAnswer) ||
+        null;
       const isCorrect = userAnswer === question.answer;
-      if (isCorrect) {
+      if (userAnswer && isCorrect) {
         score += 1;
       }
-      // 将答案和正确与否记录到测试答案中
-      testAnswers.push({
+      return {
         questionId: question._id,
         userAnswer,
         correctAnswer: question.answer,
         isCorrect,
-      });
+      };
+    });
+
+    // 更新答案数组
+    testAnswers.forEach((answer) => {
+      const index = previousAnswers.findIndex((a) =>
+        a.questionId.equals(answer.questionId)
+      );
+      if (index !== -1) {
+        previousAnswers[index] = answer;
+      } else {
+        previousAnswers.push(answer);
+      }
+    });
+
+    if (saveOnly === "true") {
+      const newSave = {
+        saveTimes: userInfo.saves.length + 1,
+        saveDate: new Date(),
+        answers: previousAnswers, // 使用之前保存的答案
+      };
+
+      userInfo.saves.push(newSave);
+      await userInfo.save();
+      res.redirect("/home");
+    } else {
+      const newTest = {
+        testTimes: userInfo.tests.length + 1,
+        testGrade: score,
+        testDate: new Date(),
+        answers: testAnswers,
+      };
+
+      userInfo.tests.push(newTest);
+      await userInfo.save();
+
+      const user = await User.findById(userIdFromSession).populate("userInfo");
+
+      const existingUserInfoIndex = user.userInfo.findIndex(
+        (info) => info._id.toString() === userInfo._id.toString()
+      );
+
+      if (existingUserInfoIndex === -1) {
+        user.userInfo.push(userInfo);
+      }
+
+      await user.save();
+
+      res.redirect(
+        `/result?userId=${userInfo.userId}&userInfoId=${userInfo._id}`
+      );
     }
-
-    // 更新用户考试信息
-    const newTest = {
-      testTimes: userInfo.tests.length + 1,
-      testGrade: score,
-      testDate: new Date(),
-      answers: testAnswers,
-    };
-
-    userInfo.tests.push(newTest);
-    await userInfo.save();
-
-    // // 将新的 UserInfo 对象关联到用户模型中
-    const user = await User.findById(userIdFromSession).populate("userInfo");
-
-    const existingUserInfoIndex = user.userInfo.findIndex(
-      (info) => info._id.toString() === userInfo._id.toString()
-    );
-
-    if (existingUserInfoIndex === -1) {
-      user.userInfo.push(userInfo);
-    }
-
-    await user.save();
-
-    res.redirect(`/result?userId=${user._id}&userInfoId=${userInfo._id}`);
   } catch (error) {
     console.error("Error submitting exam:", error);
     res.status(500).send("Internal Server Error");
@@ -367,6 +349,8 @@ app.get("/result", async (req, res) => {
   const userInfo = user.userInfo.find(
     (info) => info._id.toString() === userInfoId
   );
+  console.log(userInfo);
+  // res.send(user);
   res.render("result", { user, userInfo });
 });
 

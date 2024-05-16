@@ -9,7 +9,12 @@
     <h1><%= username %>歡迎來到工程經濟網</h1>
     <form action="/logout" method="POST">
       <a href="/ex">進入測驗</a>
+      <%if (user.role == "teacher"){ %>
+      <a href="/allStudent">查看學生資料</a>
+      <%} else{%>
       <a href="/info">查看個人檔案</a>
+      <%}%>
+
       <a href="/logout">登出</a>
     </form>
   </body>

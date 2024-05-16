@@ -12,7 +12,7 @@ const selectQuestionSchema = new Schema({
     {
       type: Schema.Types.ObjectId,
       ref: "Question",
-      require: true,
+      required: true,
     },
   ],
 });

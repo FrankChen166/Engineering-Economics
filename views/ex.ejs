@@ -7,88 +7,79 @@
   </head>
   <body>
     <h1>Exam</h1>
-
-    <!-- 提交表单 -->
     <form id="submitForm" action="/ex/submit" method="post">
       <% selectedQuestionsContent.forEach((question, index) => { %>
       <div>
-        <p><%= question.question %></p>
-        <% const options = ['A', 'B', 'C', 'D']; %> <%
-        question.options.forEach((option, optionIndex) => { %> <input
-        type="radio" id="<%= 'option-' + index + '-' + optionIndex %>"
-        name="answers[<%= index %>]" value="<%= options[optionIndex] %>" <%
-        savedProgress.forEach((progress) => { %> <%
-        progress.answers.forEach((answer) => { %> <% if
-        (answer.questionId.toString() === question._id.toString() &&
-        answer.userAnswer === options[optionIndex]) { %> checked <% } %> <% });
-        %> <% }); %> required />
-        <label for="<%= 'option-' + index + '-' + optionIndex %>">
-          <%= options[optionIndex] + '. ' + option %> </label
-        ><br />
-        <% }); %>
-      </div>
-      <% }); %>
-      <button type="submit">Submit</button>
-    </form>
-
-    <!-- 储存表单 -->
-    <form id="saveForm" action="/ex/save" method="post">
-      <% selectedQuestionsContent.forEach((question, index) => { %>
-      <div>
-        <% const options = ['A', 'B', 'C', 'D']; %> <%
-        question.options.forEach((option, optionIndex) => { %>
         <input
           type="hidden"
-          name="answers[<%= index %>][<%= optionIndex %>]"
-          id="answer_<%= index %>_<%= optionIndex %>"
-          value=""
+          name="questionIds[<%= index %>]"
+          value="<%= question._id %>"
         />
+        <p><%= question.question %></p>
+        <% const options = ['A', 'B', 'C', 'D']; %> <% const savedAnswer =
+        savedAnswers.find(a => a.questionId === question._id.toString()); %> <%
+        question.options.forEach((option, optionIndex) => { %> <input
+        type="radio" id="<%= 'option-' + index + '-' + optionIndex %>"
+        name="answers[<%= index %>]" value="<%= options[optionIndex] %>"
+        onchange="handleRadioChange('<%= question._id %>',
+        '<%=options[optionIndex] %>')" <%= savedAnswer && savedAnswer.userAnswer
+        === options[optionIndex] ? 'checked' : '' %> />
+        <label for="<%= 'option-' + index + '-' + optionIndex %>">
+          <%= options[optionIndex] %>. <%= option %>
+        </label>
+        <br />
         <% }); %>
       </div>
       <% }); %>
-      <button type="submit">Save Progress</button>
+      <input type="hidden" name="saveOnly" id="saveOnly" value="false" />
+      <button type="button" onclick="handleSaveProgress()">
+        Save Progress
+      </button>
+      <button type="button" name="saveOnly" onclick="handleSubmit()">
+        Submit
+      </button>
     </form>
 
     <script>
-      // 将用户选择的答案填充到隐藏字段中
-      const submitForm = document.getElementById("submitForm");
-      const saveForm = document.getElementById("saveForm");
+      // 创建一个对象来存储问题的 ID 和对应的答案
+      const answersObject = {};
 
-      submitForm.addEventListener("submit", function (event) {
-        event.preventDefault(); // 阻止默认提交行为
+      function handleRadioChange(questionId, answer) {
+        // 将问题的 ID 和答案存储在对象中
+        answersObject[questionId] = answer;
+      }
 
-        const selectedAnswers = document.querySelectorAll(
-          'input[type="radio"]:checked'
-        );
-        selectedAnswers.forEach(function (input) {
-          const name = input.getAttribute("name");
-          const value = input.value;
-          const [index] = name.match(/\d+/); // 提取选项的索引
-          const optionIndex = parseInt(value.charCodeAt(0)) - 65; // 将选项值转换为索引
-          document.getElementById("answer_" + index + "_" + optionIndex).value =
-            value;
-        });
+      function handleSaveProgress() {
+        // 将 answersObject 作为一个字段添加到表单中
+        const form = document.getElementById("submitForm");
+        const answersInput = document.createElement("input");
+        answersInput.type = "hidden";
+        answersInput.name = "answersObject";
+        answersInput.value = JSON.stringify(answersObject);
+        form.appendChild(answersInput);
 
-        submitForm.submit(); // 提交表单
-      });
+        // 设置保存标志为 true
+        document.getElementById("saveOnly").value = "true";
 
-      saveForm.addEventListener("submit", function (event) {
-        event.preventDefault(); // 阻止默认提交行为
+        // 提交表单
+        form.submit();
+      }
 
-        const selectedAnswers = document.querySelectorAll(
-          'input[type="radio"]:checked'
-        );
-        selectedAnswers.forEach(function (input) {
-          const name = input.getAttribute("name");
-          const value = input.value;
-          const [index] = name.match(/\d+/); // 提取选项的索引
-          const optionIndex = parseInt(value.charCodeAt(0)) - 65; // 将选项值转换为索引
-          document.getElementById("answer_" + index + "_" + optionIndex).value =
-            value;
-        });
+      function handleSubmit() {
+        // 将 answersObject 作为一个字段添加到表单中
+        const form = document.getElementById("submitForm");
+        const answersInput = document.createElement("input");
+        answersInput.type = "hidden";
+        answersInput.name = "answersObject";
+        answersInput.value = JSON.stringify(answersObject);
+        form.appendChild(answersInput);
 
-        saveForm.submit(); // 提交表单
-      });
+        // 设置保存标志为 false
+        document.getElementById("saveOnly").value = "false";
+
+        // 提交表单
+        form.submit();
+      }
     </script>
   </body>
 </html>

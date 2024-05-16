@@ -7,8 +7,9 @@
   </head>
   <body>
     <h1>
-      <%= user.username %>同學你的第 <%= userInfo.tests.length %> 次測驗分數為
-      <%= userInfo.tests[userInfo.tests.length - 1].testGrade %>
+      <%= user.username %>同學你的第 <%= userInfo.tests[userInfo.tests.length -
+      1].testTimes %> 次測驗分數為 <%= userInfo.tests[userInfo.tests.length -
+      1].testGrade %>
     </h1>
     <a href="/home">回到主頁</a>
   </body>

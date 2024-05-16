@@ -7,10 +7,10 @@
   </head>
   <body>
     <h1>學生名單</h1>
-    <% users.forEach((student)=>{%>
+    <% users.forEach((user) => { if (user.role !== "teacher") { %>
     <ul>
-      <a href="/allStudent/<%=student._id%>"><li><%=student.username%></li></a>
+      <a href="/allStudent/<%= user._id %>"><li><%= user.username %></li></a>
     </ul>
-    <% })%>
+    <% } }); %>
   </body>
 </html>
