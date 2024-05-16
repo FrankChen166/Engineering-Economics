@@ -135,13 +135,19 @@ app.get("/home", async (req, res) => {
   const userId = req.session.user_id;
 
   const user = await User.findById(userId);
+  const userinfo = await UserInfo.findOne({ userId });
+
+  let testTimes = 0;
+  if (userinfo) {
+    testTimes = userinfo.tests.length;
+  }
 
   const { username } = req.session;
   if (!req.session.user_id) {
     return res.redirect("/login");
   }
 
-  res.render("home", { username, user });
+  res.render("home", { username, user, userinfo, testTimes });
 });
 
 app.get("/upload", async (req, res) => {
@@ -331,31 +337,31 @@ app.post("/ex/submit", async (req, res) => {
       }
 
       await user.save();
-      const { username, studentId } = user;
+      // const { username, studentId } = user;
 
-      // 将新测试的内容保存到JSON文件中
-      const jsonData = JSON.stringify(
-        {
-          username,
-          studentId,
-          testGrade: newTest.testGrade,
-        },
-        null,
-        2
-      );
-      const filePath = path.join(
-        __dirname,
-        "grade",
-        `${studentId}-${username}.json`
-      );
+      // // 将新测试的内容保存到JSON文件中
+      // const jsonData = JSON.stringify(
+      //   {
+      //     username,
+      //     studentId,
+      //     testGrade: newTest.testGrade,
+      //   },
+      //   null,
+      //   2
+      // );
+      // const filePath = path.join(
+      //   __dirname,
+      //   "grade",
+      //   `${studentId}-${username}.json`
+      // );
 
-      fs.writeFile(filePath, jsonData, (err) => {
-        if (err) {
-          console.error("Error writing JSON file:", err);
-        } else {
-          console.log("JSON file has been saved.");
-        }
-      });
+      // fs.writeFile(filePath, jsonData, (err) => {
+      //   if (err) {
+      //     console.error("Error writing JSON file:", err);
+      //   } else {
+      //     console.log("JSON file has been saved.");
+      //   }
+      // });
 
       res.redirect(
         `/result?userId=${userInfo.userId}&userInfoId=${userInfo._id}`
