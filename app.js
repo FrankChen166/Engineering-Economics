@@ -85,7 +85,6 @@ app.post("/login", async (req, res) => {
       req.session.user_id = user._id;
       req.session.username = user.username;
 
-      // 检查是否存在保存的记录，并在必要时加载到会话中
       const userInfo = await UserInfo.findOne({ userId: user._id });
       if (userInfo && userInfo.saves.length > 0) {
         req.session.loadSavedProgress = true;
@@ -105,19 +104,16 @@ app.post("/login", async (req, res) => {
 
 app.get("/logout", async (req, res) => {
   try {
-    // 获取用户的 ID
     const userId = req.session.user_id;
-    // 如果用户已经登录
+
     if (userId) {
-      // 找到用户信息
       let userInfo = await UserInfo.findOne({ userId });
-      // 如果找到用户信息
+
       if (userInfo) {
-        // 将保存的进度信息保存到数据库中
         await userInfo.save();
       }
     }
-    // 销毁会话信息
+
     req.session.destroy((err) => {
       if (err) {
         console.log(err);
@@ -161,7 +157,6 @@ app.get("/upload", async (req, res) => {
   res.render("upload");
 });
 
-// POST请求，处理上传的题目和答案
 app.post("/upload", async (req, res) => {
   try {
     const userId = req.session.user_id;
@@ -172,15 +167,15 @@ app.post("/upload", async (req, res) => {
       return res.status(403).send("Forbidden");
     }
     const { question, options, answer } = req.body;
-    // 创建题目对象
+
     const newQuestion = new Question({
       question,
       options,
       answer,
     });
-    // 保存题目到数据库
+
     await newQuestion.save();
-    res.redirect("/upload"); // 上传成功后重定向到上传页面
+    res.redirect("/upload");
   } catch (error) {
     console.error("Error uploading question:", error);
     res.status(500).send("Internal Server Error");
