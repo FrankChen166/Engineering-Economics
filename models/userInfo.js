@@ -29,6 +29,15 @@ const saveSchema = new Schema({
     required: true,
   },
   answers: [answerSchema],
+  examType: { type: String, required: true },
+});
+
+const testSchema = new Schema({
+  testTimes: Number,
+  testGrade: Number,
+  testDate: Date,
+  answers: [answerSchema],
+  examType: { type: String, required: true }, // 新增字段來區分測驗類型
 });
 
 const userInfoSchema = new Schema({
@@ -37,14 +46,7 @@ const userInfoSchema = new Schema({
     ref: "User",
     required: true,
   },
-  tests: [
-    {
-      testTimes: Number,
-      testGrade: Number,
-      testDate: Date,
-      answers: [answerSchema],
-    },
-  ],
+  tests: [testSchema],
   saves: [saveSchema],
 });
 

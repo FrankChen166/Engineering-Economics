@@ -15,23 +15,11 @@
     <!-- 页面内容 -->
 
     <div>
-      <h2>Test <%= testIndex %></h2>
+      <h2>Test <%= testTimes %></h2>
       <% requestedTest.answers.forEach((answer, index) => { %>
-      <p><%= answer.question.question %></p>
-      <ul>
-        <% answer.question.options.forEach((option) => { %>
-        <li><%=option%></li>
-        <% }); %>
-      </ul>
+      <p><%= answer %></p>
 
-      <p>
-        你的答案: <%= answer.userAnswer %> <% if (answer.isCorrect) { %> <% }
-        else { %> <% } %>
-      </p>
-      <p>正確答案: <%= answer.question.answer %></p>
       <% }); %>
     </div>
-
-    <!-- 其他页面内容 -->
   </body>
 </html>

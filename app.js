@@ -10,7 +10,7 @@ const app = express();
 
 const User = require("./models/user");
 const UserInfo = require("./models/userInfo");
-const Question = require("./models/questions");
+const { QuestionSet1, QuestionSet2 } = require("./models/questions");
 const SelectQuestion = require("./models/selectQuestion");
 const user = require("./models/user");
 
@@ -166,15 +166,21 @@ app.post("/upload", async (req, res) => {
     if (user.role !== "teacher") {
       return res.status(403).send("Forbidden");
     }
-    const { question, options, answer } = req.body;
+    const { question, options, answer, examType } = req.body;
 
-    const newQuestion = new Question({
+    const newQuestion = {
       question,
       options,
       answer,
-    });
+    };
+    if (examType === "exam1") {
+      await new QuestionSet1(newQuestion).save();
+    } else if (examType === "exam2") {
+      await new QuestionSet2(newQuestion).save();
+    } else {
+      return res.status(400).send("Invalid exam type");
+    }
 
-    await newQuestion.save();
     res.redirect("/upload");
   } catch (error) {
     console.error("Error uploading question:", error);
@@ -182,7 +188,7 @@ app.post("/upload", async (req, res) => {
   }
 });
 
-app.get("/ex", async (req, res) => {
+async function renderExamPage(req, res, examType, QuestionSet) {
   try {
     const userId = req.session.user_id;
     if (!userId) {
@@ -194,43 +200,57 @@ app.get("/ex", async (req, res) => {
       userInfo = new UserInfo({
         userId: userId,
         saves: [],
+        tests: [],
       });
       await userInfo.save();
     }
 
-    const questions = await Question.find({});
-    let selectQuestions = await SelectQuestion.findOne({ userId });
+    const questions = await QuestionSet.find({});
+    let selectQuestions = await SelectQuestion.findOne({
+      userId,
+      examType,
+    });
     if (!selectQuestions) {
       const randomQuestions = getRandomQuestions(questions, 3);
       selectQuestions = new SelectQuestion({
         userId: userId,
         questionIds: randomQuestions.map((question) => question._id),
+        examType,
       });
       await selectQuestions.save();
     }
 
     const selectedQuestionIds = selectQuestions.questionIds;
-    const selectedQuestionsContent = await Question.find({
+    const selectedQuestionsContent = await QuestionSet.find({
       _id: { $in: selectedQuestionIds },
     });
 
     let savedAnswers = [];
+
     if (userInfo.saves.length > 0) {
-      const latestSave = userInfo.saves[userInfo.saves.length - 1];
-      savedAnswers = latestSave.answers.map((answer) => ({
-        questionId: answer.questionId.toString(),
-        userAnswer: answer.userAnswer,
-      }));
+      const latestSave = userInfo.saves
+        .filter((save) => save.examType === examType)
+        .slice(-1)[0];
+      if (latestSave) {
+        savedAnswers = latestSave.answers.map((answer) => ({
+          questionId: answer.questionId.toString(),
+          userAnswer: answer.userAnswer,
+        }));
+      }
     }
 
-    res.render("ex", { selectedQuestionsContent, savedAnswers });
+    res.render("ex", {
+      examType,
+      selectedQuestionsContent,
+      savedAnswers,
+    });
   } catch (error) {
     console.error("Error rendering exam page:", error);
     res.status(500).send("Internal Server Error");
   }
-});
+}
 
-app.post("/ex/submit", async (req, res) => {
+async function handleSubmit(req, res, examType) {
   try {
     const { answersObject, saveOnly } = req.body;
     let score = 0;
@@ -253,6 +273,7 @@ app.post("/ex/submit", async (req, res) => {
 
     const selectQuestions = await SelectQuestion.findOne({
       userId: userIdFromSession,
+      examType,
     });
 
     if (!selectQuestions) {
@@ -260,15 +281,16 @@ app.post("/ex/submit", async (req, res) => {
     }
 
     const selectedQuestionIds = selectQuestions.questionIds;
-    const selectedQuestions = await Question.find({
+    const questionModel = examType === "exam1" ? QuestionSet1 : QuestionSet2;
+    const selectedQuestions = await questionModel.find({
       _id: { $in: selectedQuestionIds },
     });
 
-    const latestSave = userInfo.saves[userInfo.saves.length - 1] || {
-      answers: [],
-    };
+    const latestSave = userInfo.saves
+      .filter((save) => save.examType === examType)
+      .slice(-1)[0] || { answers: [] };
     const previousAnswers = latestSave.answers;
-    console.log(previousAnswers);
+
     const testAnswers = selectedQuestions.map((question) => {
       const previousAnswer = previousAnswers.find((answer) =>
         answer.questionId.equals(question._id)
@@ -305,8 +327,8 @@ app.post("/ex/submit", async (req, res) => {
         saveTimes: userInfo.saves.length + 1,
         saveDate: new Date(),
         answers: previousAnswers,
+        examType,
       };
-
       userInfo.saves.push(newSave);
       await userInfo.save();
       res.redirect("/home");
@@ -316,48 +338,18 @@ app.post("/ex/submit", async (req, res) => {
         testGrade: score,
         testDate: new Date(),
         answers: testAnswers,
+        examType,
       };
-
       userInfo.tests.push(newTest);
       await userInfo.save();
-
       const user = await User.findById(userIdFromSession).populate("userInfo");
-
       const existingUserInfoIndex = user.userInfo.findIndex(
         (info) => info._id.toString() === userInfo._id.toString()
       );
-
       if (existingUserInfoIndex === -1) {
         user.userInfo.push(userInfo);
       }
-
       await user.save();
-      // const { username, studentId } = user;
-
-      // // 将新测试的内容保存到JSON文件中
-      // const jsonData = JSON.stringify(
-      //   {
-      //     username,
-      //     studentId,
-      //     testGrade: newTest.testGrade,
-      //   },
-      //   null,
-      //   2
-      // );
-      // const filePath = path.join(
-      //   __dirname,
-      //   "grade",
-      //   `${studentId}-${username}.json`
-      // );
-
-      // fs.writeFile(filePath, jsonData, (err) => {
-      //   if (err) {
-      //     console.error("Error writing JSON file:", err);
-      //   } else {
-      //     console.log("JSON file has been saved.");
-      //   }
-      // });
-
       res.redirect(
         `/result?userId=${userInfo.userId}&userInfoId=${userInfo._id}`
       );
@@ -366,6 +358,69 @@ app.post("/ex/submit", async (req, res) => {
     console.error("Error submitting exam:", error);
     res.status(500).send("Internal Server Error");
   }
+}
+
+async function renderReview(req, res, examType, QuestionSet) {
+  try {
+    const userId = req.session.user_id;
+    const user = await User.findById(userId).populate("userInfo");
+
+    if (!user || !user.userInfo || user.userInfo.length === 0) {
+      return res.status(404).send("User or test information not found");
+    }
+
+    const userInfo = user.userInfo[0];
+    const tests = userInfo.tests;
+    const testIndex = req.params.testIndex;
+
+    if (testIndex >= tests.length) {
+      return res.status(404).send("Test not found");
+    }
+
+    const requestedTest = tests[testIndex];
+    console.log(requestedTest);
+
+    const questionIds = requestedTest.answers.map(
+      (answer) => answer.questionId
+    );
+    const questions = await QuestionSet.find({ _id: { $in: questionIds } });
+
+    // Create a dictionary to map question IDs to questions
+    const questionDict = {};
+    questions.forEach((question) => {
+      questionDict[question._id] = question;
+    });
+
+    // Associate each answer with its corresponding question
+    requestedTest.answers.forEach((answer) => {
+      answer.question = questionDict[answer.questionId];
+    });
+
+    res.render("review", {
+      requestedTest,
+      testIndex,
+      user,
+    });
+  } catch (error) {
+    console.error("Error fetching review:", error);
+    res.status(500).send("Internal Server Error");
+  }
+}
+
+app.get("/ex1", async (req, res) => {
+  await renderExamPage(req, res, "exam1", QuestionSet1);
+});
+
+app.get("/ex2", async (req, res) => {
+  await renderExamPage(req, res, "exam2", QuestionSet2);
+});
+
+app.post("/exam1/submit", async (req, res) => {
+  await handleSubmit(req, res, "exam1");
+});
+
+app.post("/exam2/submit", async (req, res) => {
+  await handleSubmit(req, res, "exam2");
 });
 
 app.get("/result", async (req, res) => {
@@ -384,29 +439,19 @@ app.get("/result", async (req, res) => {
 
 app.get("/info", async (req, res) => {
   const userId = req.session.user_id;
-  console.log(userId);
-
   try {
     const user = await User.findById(userId).populate("userInfo");
-    console.log(user);
-    // if (
-    //   !user ||
-    //   !user.userInfo ||
-    //   user.userInfo.length === 0 ||
-    //   !user.userInfo[0].tests ||
-    //   user.userInfo[0].tests.length === 0
-    // ) {
-    //   return res.status(404).send("User or test information not found");
-    // }
+    const userinfo = await UserInfo.findOne({ userId });
+    const testTimes = userinfo.tests.testTimes;
 
-    res.render("info", { user });
+    res.render("info", { user, testTimes });
   } catch (error) {
     console.error("Error fetching user info:", error);
     res.status(500).send("Internal Server Error");
   }
 });
 
-app.get("/info/:testIndex", async (req, res) => {
+app.get("/info1/:testTimes", async (req, res) => {
   try {
     const userId = req.session.user_id;
     const user = await User.findById(userId).populate("userInfo");
@@ -416,47 +461,191 @@ app.get("/info/:testIndex", async (req, res) => {
     }
 
     const userInfo = user.userInfo[0];
-
     const tests = userInfo.tests;
+    const testTimes = req.params.testTimes;
+    console.log(testTimes);
 
+    if (testTimes >= tests.length) {
+      return res.status(404).send("Test not found");
+    }
+
+    const requestedTest = tests[testTimes];
+    console.log(requestedTest);
+
+    const questionIds = requestedTest.answers.map(
+      (answer) => answer.questionId
+    );
+    const questions = await QuestionSet1.find({ _id: { $in: questionIds } });
+
+    // Create a dictionary to map question IDs to questions
+    const questionDict = {};
+    questions.forEach((question) => {
+      questionDict[question._id] = question;
+    });
+
+    // Associate each answer with its corresponding question
+    requestedTest.answers.forEach((answer) => {
+      const question = questionDict[answer.questionId];
+      console.log(question);
+      answer.question = question.question;
+
+      answer.correctAnswer = question.answer;
+    });
+
+    res.render("review", {
+      requestedTest,
+      user,
+    });
+  } catch (error) {
+    console.error("Error fetching review:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+app.get("/info2", async (req, res) => {
+  try {
+    const userId = req.session.user_id;
+    const user = await User.findById(userId).populate("userInfo");
+
+    if (!user || !user.userInfo || user.userInfo.length === 0) {
+      return res.status(404).send("User or test information not found");
+    }
+
+    const userInfo = user.userInfo[0];
+    const tests = userInfo.tests;
     const testIndex = req.params.testIndex;
-    console.log(testIndex);
 
     if (testIndex >= tests.length) {
       return res.status(404).send("Test not found");
     }
 
     const requestedTest = tests[testIndex];
-    // console.log(requestedTest);
+    console.log(requestedTest);
 
     const questionIds = requestedTest.answers.map(
       (answer) => answer.questionId
     );
-    // console.log(questionIds);
-    const questions = await Question.find({ _id: { $in: questionIds } });
-    // console.log(questions);
+    const questions = await QuestionSet2.find({ _id: { $in: questionIds } });
+
+    // Create a dictionary to map question IDs to questions
     const questionDict = {};
     questions.forEach((question) => {
       questionDict[question._id] = question;
     });
-    console.log(questionDict);
+
+    // Associate each answer with its corresponding question
     requestedTest.answers.forEach((answer) => {
       answer.question = questionDict[answer.questionId];
     });
-    // console.log(answer.question);
-    const index = { A: 0, B: 1, C: 2, D: 3 };
 
     res.render("review", {
       requestedTest,
       testIndex,
       user,
     });
-    // res.send(user);
   } catch (error) {
     console.error("Error fetching review:", error);
     res.status(500).send("Internal Server Error");
   }
 });
+
+// app.get("/info/:testIndex", async (req, res) => {
+//   try {
+//     const userId = req.session.user_id;
+//     const user = await User.findById(userId).populate("userInfo");
+
+//     if (!user || !user.userInfo || user.userInfo.length === 0) {
+//       return res.status(404).send("User or test information not found");
+//     }
+
+//     const userInfo = user.userInfo[0];
+//     const tests = userInfo.tests;
+//     const testIndex = req.params.testIndex;
+
+//     if (testIndex >= tests.length) {
+//       return res.status(404).send("Test not found");
+//     }
+
+//     const requestedTest = tests[testIndex];
+//     console.log(requestedTest);
+
+//     const questionIds = requestedTest.answers.map(
+//       (answer) => answer.questionId
+//     );
+//     const questions = await QuestionSet2.find({ _id: { $in: questionIds } });
+
+//     // Create a dictionary to map question IDs to questions
+//     const questionDict = {};
+//     questions.forEach((question) => {
+//       questionDict[question._id] = question;
+//     });
+
+//     // Associate each answer with its corresponding question
+//     requestedTest.answers.forEach((answer) => {
+//       answer.question = questionDict[answer.questionId];
+//     });
+
+//     res.render("review", {
+//       requestedTest,
+//       testIndex,
+//       user,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching review:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
+// app.get("/info/:testIndex", async (req, res) => {
+//   try {
+//     const userId = req.session.user_id;
+//     const user = await User.findById(userId).populate("userInfo");
+
+//     if (!user || !user.userInfo || user.userInfo.length === 0) {
+//       return res.status(404).send("User or test information not found");
+//     }
+
+//     const userInfo = user.userInfo[0];
+
+//     const tests = userInfo.tests;
+
+//     const testIndex = req.params.testIndex;
+//     console.log(testIndex);
+
+//     if (testIndex >= tests.length) {
+//       return res.status(404).send("Test not found");
+//     }
+
+//     const requestedTest = tests[testIndex];
+//     // console.log(requestedTest);
+
+//     const questionIds = requestedTest.answers.map(
+//       (answer) => answer.questionId
+//     );
+//     // console.log(questionIds);
+//     const questions = await Question.find({ _id: { $in: questionIds } });
+//     // console.log(questions);
+//     const questionDict = {};
+//     questions.forEach((question) => {
+//       questionDict[question._id] = question;
+//     });
+//     console.log(questionDict);
+//     requestedTest.answers.forEach((answer) => {
+//       answer.question = questionDict[answer.questionId];
+//     });
+//     // console.log(answer.question);
+//     const index = { A: 0, B: 1, C: 2, D: 3 };
+
+//     res.render("review", {
+//       requestedTest,
+//       testIndex,
+//       user,
+//     });
+//     // res.send(user);
+//   } catch (error) {
+//     console.error("Error fetching review:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
 
 app.get("/allStudent", async (req, res) => {
   // 将路由路径更正为 /allStudent

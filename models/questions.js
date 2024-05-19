@@ -6,4 +6,7 @@ const questionSchema = new mongoose.Schema({
   answer: { type: String, required: true },
 });
 
-module.exports = mongoose.model("Question", questionSchema);
+const QuestionSet1 = mongoose.model("QuestionSet1", questionSchema);
+const QuestionSet2 = mongoose.model("QuestionSet2", questionSchema);
+
+module.exports = { QuestionSet1, QuestionSet2 };

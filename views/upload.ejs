@@ -8,7 +8,7 @@
   </head>
   <body>
     <h1>Upload Questions</h1>
-    <form action="/upload" method="POST">
+    <form action="/upload" method="POST" id="uploadForm">
       <label for="question">Question:</label><br />
       <input type="text" id="question" name="question" required /><br />
       <label for="option1">Option 1:</label><br />
@@ -21,7 +21,20 @@
       <input type="text" id="option4" name="options[]" required /><br />
       <label for="answer">Answer:</label><br />
       <input type="text" id="answer" name="answer" required /><br />
-      <button type="submit">Submit</button>
+      <input type="hidden" name="examType" id="examType" value="" />
+      <button type="button" onclick="uploadExam1()">上傳第一次作業</button>
+      <button type="button" onclick="uploadExam2()">上傳第二次作業</button>
     </form>
+    <script>
+      function uploadExam1() {
+        document.getElementById("examType").value = "exam1";
+        document.getElementById("uploadForm").submit();
+      }
+
+      function uploadExam2() {
+        document.getElementById("examType").value = "exam2";
+        document.getElementById("uploadForm").submit();
+      }
+    </script>
   </body>
 </html>

@@ -15,6 +15,7 @@ const selectQuestionSchema = new Schema({
       required: true,
     },
   ],
+  examType: { type: String, required: true },
 });
 
 module.exports = mongoose.model("SelectQuestion", selectQuestionSchema);

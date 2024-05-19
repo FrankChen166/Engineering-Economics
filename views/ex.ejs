@@ -7,7 +7,7 @@
   </head>
   <body>
     <h1>Exam</h1>
-    <form id="submitForm" action="/ex/submit" method="post">
+    <form id="submitForm" action="/<%= examType%>/submit" method="post">
       <% selectedQuestionsContent.forEach((question, index) => { %>
       <div>
         <input
@@ -25,7 +25,7 @@
         '<%=options[optionIndex] %>')" <%= savedAnswer && savedAnswer.userAnswer
         === options[optionIndex] ? 'checked' : '' %> />
         <label for="<%= 'option-' + index + '-' + optionIndex %>">
-          <%= options[optionIndex] %>. <%= option %>
+          <%= option %>
         </label>
         <br />
         <% }); %>
@@ -41,43 +41,43 @@
     </form>
 
     <script>
-      // 创建一个对象来存储问题的 ID 和对应的答案
       const answersObject = {};
 
       function handleRadioChange(questionId, answer) {
-        // 将问题的 ID 和答案存储在对象中
         answersObject[questionId] = answer;
       }
 
       function handleSaveProgress() {
-        // 将 answersObject 作为一个字段添加到表单中
         const form = document.getElementById("submitForm");
-        const answersInput = document.createElement("input");
-        answersInput.type = "hidden";
-        answersInput.name = "answersObject";
+        let answersInput = document.getElementById("answersObject");
+        if (!answersInput) {
+          answersInput = document.createElement("input");
+          answersInput.type = "hidden";
+          answersInput.id = "answersObject";
+          answersInput.name = "answersObject";
+          form.appendChild(answersInput);
+        }
         answersInput.value = JSON.stringify(answersObject);
-        form.appendChild(answersInput);
 
-        // 设置保存标志为 true
         document.getElementById("saveOnly").value = "true";
 
-        // 提交表单
         form.submit();
       }
 
       function handleSubmit() {
-        // 将 answersObject 作为一个字段添加到表单中
         const form = document.getElementById("submitForm");
-        const answersInput = document.createElement("input");
-        answersInput.type = "hidden";
-        answersInput.name = "answersObject";
+        let answersInput = document.getElementById("answersObject");
+        if (!answersInput) {
+          answersInput = document.createElement("input");
+          answersInput.type = "hidden";
+          answersInput.id = "answersObject";
+          answersInput.name = "answersObject";
+          form.appendChild(answersInput);
+        }
         answersInput.value = JSON.stringify(answersObject);
-        form.appendChild(answersInput);
 
-        // 设置保存标志为 false
         document.getElementById("saveOnly").value = "false";
 
-        // 提交表单
         form.submit();
       }
     </script>
