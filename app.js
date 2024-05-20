@@ -441,107 +441,89 @@ app.get("/info", async (req, res) => {
   const userId = req.session.user_id;
   try {
     const user = await User.findById(userId).populate("userInfo");
-    const userinfo = await UserInfo.findOne({ userId });
-    const testTimes = userinfo.tests.testTimes;
+    console.log(user);
+    const userInfo = user.userInfo[0];
+    // if (!user || !user.userInfo || user.userInfo.length === 0) {
+    //   return res.status(404).send("User or test information not found");
+    // }
+    if (!userInfo) {
+      res.render("info", { user });
+    } else {
+      const testTimes = userInfo.tests.map((test, index) => ({
+        testTimes: index,
+        date: test.testDate,
+      }));
 
-    res.render("info", { user, testTimes });
+      res.render("info", { user, testTimes });
+    }
   } catch (error) {
     console.error("Error fetching user info:", error);
     res.status(500).send("Internal Server Error");
   }
 });
 
-app.get("/info1/:testTimes", async (req, res) => {
-  try {
-    const userId = req.session.user_id;
-    const user = await User.findById(userId).populate("userInfo");
+const getQuestionsAndPopulateAnswers = async (
+  QuestionModel,
+  questionIds,
+  requestedTest
+) => {
+  const questions = await QuestionModel.find({ _id: { $in: questionIds } });
+  const questionDict = {};
+  questions.forEach((question) => {
+    questionDict[question._id.toString()] = question;
+  });
 
-    if (!user || !user.userInfo || user.userInfo.length === 0) {
-      return res.status(404).send("User or test information not found");
-    }
-
-    const userInfo = user.userInfo[0];
-    const tests = userInfo.tests;
-    const testTimes = req.params.testTimes;
-    console.log(testTimes);
-
-    if (testTimes >= tests.length) {
-      return res.status(404).send("Test not found");
-    }
-
-    const requestedTest = tests[testTimes];
-    console.log(requestedTest);
-
-    const questionIds = requestedTest.answers.map(
-      (answer) => answer.questionId
-    );
-    const questions = await QuestionSet1.find({ _id: { $in: questionIds } });
-
-    // Create a dictionary to map question IDs to questions
-    const questionDict = {};
-    questions.forEach((question) => {
-      questionDict[question._id] = question;
-    });
-
-    // Associate each answer with its corresponding question
-    requestedTest.answers.forEach((answer) => {
-      const question = questionDict[answer.questionId];
-      console.log(question);
+  requestedTest.answers.forEach((answer) => {
+    const question = questionDict[answer.questionId.toString()];
+    if (question) {
       answer.question = question.question;
-
+      answer.options = question.options;
       answer.correctAnswer = question.answer;
-    });
+    } else {
+      answer.question = "Question not found";
+      answer.options = [];
+      answer.correctAnswer = "Answer not found";
+    }
+  });
+};
 
-    res.render("review", {
-      requestedTest,
-      user,
-    });
-  } catch (error) {
-    console.error("Error fetching review:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-app.get("/info2", async (req, res) => {
+app.get("/info/:testIndex", async (req, res) => {
   try {
     const userId = req.session.user_id;
+    if (!userId) {
+      return res.redirect("/login");
+    }
+
     const user = await User.findById(userId).populate("userInfo");
 
-    if (!user || !user.userInfo || user.userInfo.length === 0) {
-      return res.status(404).send("User or test information not found");
-    }
+    // if (!user || !user.userInfo || user.userInfo.length === 0) {
+    //   return res.status(404).send("User or test information not found");
+    // }
 
     const userInfo = user.userInfo[0];
     const tests = userInfo.tests;
-    const testIndex = req.params.testIndex;
-
-    if (testIndex >= tests.length) {
+    const testIndex = parseInt(req.params.testIndex, 10);
+    console.log(testIndex);
+    if (isNaN(testIndex) || testIndex >= tests.length || testIndex < 0) {
       return res.status(404).send("Test not found");
     }
 
     const requestedTest = tests[testIndex];
-    console.log(requestedTest);
-
     const questionIds = requestedTest.answers.map(
       (answer) => answer.questionId
     );
-    const questions = await QuestionSet2.find({ _id: { $in: questionIds } });
 
-    // Create a dictionary to map question IDs to questions
-    const questionDict = {};
-    questions.forEach((question) => {
-      questionDict[question._id] = question;
-    });
-
-    // Associate each answer with its corresponding question
-    requestedTest.answers.forEach((answer) => {
-      answer.question = questionDict[answer.questionId];
-    });
+    const QuestionModel = testIndex === 0 ? QuestionSet1 : QuestionSet2;
+    await getQuestionsAndPopulateAnswers(
+      QuestionModel,
+      questionIds,
+      requestedTest
+    );
 
     res.render("review", {
       requestedTest,
-      testIndex,
       user,
+      testIndex,
     });
   } catch (error) {
     console.error("Error fetching review:", error);

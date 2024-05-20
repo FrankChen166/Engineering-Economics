@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- head 部分 -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Review Test</title>
     <style>
       .correct {
         color: green;
@@ -9,17 +11,34 @@
       .incorrect {
         color: red;
       }
+      .default {
+        color: black;
+      }
     </style>
   </head>
   <body>
-    <!-- 页面内容 -->
-
     <div>
-      <h2>Test <%= testTimes %></h2>
+      <h2>Review Test <%= testIndex + 1 %></h2>
       <% requestedTest.answers.forEach((answer, index) => { %>
-      <p><%= answer %></p>
-
+      <div>
+        <p>題目 <%= index + 1 %>: <%= answer.question %></p>
+        <% if (answer.options && answer.options.length > 0) { %>
+        <ul>
+          <% answer.options.forEach((option, optIndex) => { %> <% let
+          optionClass = 'default'; if (option === answer.correctAnswer) {
+          optionClass = 'correct'; } if (option === answer.userAnswer && option
+          !== answer.correctAnswer) { optionClass = 'incorrect'; } %>
+          <li class="<%= optionClass %>">
+            <%= String.fromCharCode(65 + optIndex) %>. <%= option %>
+          </li>
+          <% }); %>
+        </ul>
+        <% } %>
+        <p>你的答案: <%= answer.userAnswer %></p>
+        <p>正確答案: <%= answer.correctAnswer %></p>
+      </div>
       <% }); %>
+      <a href="/info">Back to Info</a>
     </div>
   </body>
 </html>
