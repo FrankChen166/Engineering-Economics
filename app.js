@@ -30,6 +30,12 @@ mongoose
     console.log(e);
   });
 
+const uploadDir = path.join(__dirname, "pic");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+app.use("/pic", express.static(uploadDir));
+
 function getRandomQuestions(questions, num) {
   const selectedQuestions = [];
   const shuffled = questions.sort(() => 0.5 - Math.random()); // 随机排序
@@ -172,6 +178,7 @@ app.post("/upload", async (req, res) => {
       question,
       options,
       answer,
+      imagePath: req.file ? req.file.path : null,
     };
     if (examType === "exam1") {
       await new QuestionSet1(newQuestion).save();
@@ -238,7 +245,7 @@ async function renderExamPage(req, res, examType, QuestionSet) {
         }));
       }
     }
-
+    console.log(selectedQuestionsContent);
     res.render("ex", {
       examType,
       selectedQuestionsContent,
@@ -629,20 +636,39 @@ app.get("/info/:testIndex", async (req, res) => {
 //   }
 // });
 
-app.get("/allStudent", async (req, res) => {
-  // 将路由路径更正为 /allStudent
-  const userId = req.session.user_id;
-  const user = await User.findById(userId);
-  if (user.role !== "teacher") {
-    // 如果不是老师，重定向到其他页面或显示错误消息
-    return res.status(403).send("Forbidden");
-  }
-  const users = await User.find({});
-
-  res.render("allStudent", { users, userId });
+app.get("/classSelect", async (req, res) => {
+  res.render("classSelect");
 });
 
-app.get("/allStudent/:id", async (req, res) => {
+app.get("/class/:className", async (req, res) => {
+  try {
+    const className = req.params.className;
+    const students = await User.find({ CLASS: className, role: "student" });
+
+    const user = await User.find({});
+
+    res.render("studentList", { user, className, students });
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// app.get("/allStudent", async (req, res) => {
+//   // 将路由路径更正为 /allStudent
+//   const userId = req.session.user_id;
+//   const user = await User.findById(userId);
+//   if (user.role !== "teacher") {
+//     // 如果不是老师，重定向到其他页面或显示错误消息
+//     return res.status(403).send("Forbidden");
+//   }
+
+//   const users = await User.find({});
+
+//   res.render("allStudent", { users, userId });
+// });
+
+app.get("/class/:className/:id", async (req, res) => {
   // 检查用户是否登录
   if (!req.session.user_id) {
     return res.redirect("/login");
@@ -651,16 +677,21 @@ app.get("/allStudent/:id", async (req, res) => {
   try {
     const userId = req.session.user_id;
 
+    // 检查用户是否为教师
     const user = await User.findById(userId);
-
-    if (user.role !== "teacher") {
+    if (!user || user.role !== "teacher") {
       return res.status(403).send("Forbidden");
     }
 
     const studentId = req.params.id;
-    const users = await User.findById(studentId).populate("userInfo");
+    const student = await User.findById(studentId).populate("userInfo");
 
-    res.render("allStudentInfo", { users });
+    // 确保学生存在
+    if (!student) {
+      return res.status(404).send("Student not found");
+    }
+
+    res.render("studentInfo", { users: student });
   } catch (error) {
     console.error("Error fetching student info:", error);
     res.status(500).send("Internal Server Error");

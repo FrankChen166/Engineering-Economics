@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= className %> - 學生名單</title>
+  </head>
+  <body>
+    <h1><%= className %> - 學生名單</h1>
+    <ul>
+      <% students.forEach(student => { %>
+      <li>
+        <a href="/class/<%= student.CLASS%>/<%= student._id %>"
+          ><%= student.username %>
+        </a>
+        - <%= student.studentId %>
+      </li>
+      <% }) %>
+    </ul>
+    <a href="/classSelect">返回選擇班級</a>
+  </body>
+</html>
