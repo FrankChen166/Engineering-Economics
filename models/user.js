@@ -8,6 +8,8 @@ const userSchema = new Schema({
   useraccount: { type: String, required: [true, "Useraccunt cannot be blank"] },
   password: { type: String, required: [true, "Password cannot be blank"] },
   role: { type: String, enum: ["teacher", "student"], default: "student" },
+  firstScore: Number,
+  secondScore: Number,
   userInfo: [
     {
       type: Schema.Types.ObjectId,

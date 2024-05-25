@@ -17,6 +17,13 @@
       </li>
       <% }) %>
     </ul>
+    <form
+      action="/class/<%= className %>/export"
+      method="get"
+      style="display: inline"
+    >
+      <button type="submit">下載成績</button>
+    </form>
     <a href="/classSelect">返回選擇班級</a>
   </body>
 </html>

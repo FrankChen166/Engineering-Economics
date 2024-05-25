@@ -10,6 +10,7 @@ const app = express();
 
 const User = require("./models/user");
 const UserInfo = require("./models/userInfo");
+const exportRouter = require("./export/export");
 const { QuestionSet1, QuestionSet2 } = require("./models/questions");
 const SelectQuestion = require("./models/selectQuestion");
 const user = require("./models/user");
@@ -20,6 +21,7 @@ app.set("views", "views");
 app.use(express.urlencoded({ extended: true }));
 app.use(session({ secret: "notgood" }));
 app.use(methodOverride("_method"));
+app.use("/", exportRouter);
 
 mongoose
   .connect("mongodb://localhost:27017/EE")
@@ -349,7 +351,13 @@ async function handleSubmit(req, res, examType) {
       };
       userInfo.tests.push(newTest);
       await userInfo.save();
+
       const user = await User.findById(userIdFromSession).populate("userInfo");
+      if (examType === "exam1") {
+        user.firstScore = score;
+      } else if (examType === "exam2") {
+        user.secondScore = score;
+      }
       const existingUserInfoIndex = user.userInfo.findIndex(
         (info) => info._id.toString() === userInfo._id.toString()
       );
@@ -503,10 +511,6 @@ app.get("/info/:testIndex", async (req, res) => {
 
     const user = await User.findById(userId).populate("userInfo");
 
-    // if (!user || !user.userInfo || user.userInfo.length === 0) {
-    //   return res.status(404).send("User or test information not found");
-    // }
-
     const userInfo = user.userInfo[0];
     const tests = userInfo.tests;
     const testIndex = parseInt(req.params.testIndex, 10);
@@ -538,104 +542,6 @@ app.get("/info/:testIndex", async (req, res) => {
   }
 });
 
-// app.get("/info/:testIndex", async (req, res) => {
-//   try {
-//     const userId = req.session.user_id;
-//     const user = await User.findById(userId).populate("userInfo");
-
-//     if (!user || !user.userInfo || user.userInfo.length === 0) {
-//       return res.status(404).send("User or test information not found");
-//     }
-
-//     const userInfo = user.userInfo[0];
-//     const tests = userInfo.tests;
-//     const testIndex = req.params.testIndex;
-
-//     if (testIndex >= tests.length) {
-//       return res.status(404).send("Test not found");
-//     }
-
-//     const requestedTest = tests[testIndex];
-//     console.log(requestedTest);
-
-//     const questionIds = requestedTest.answers.map(
-//       (answer) => answer.questionId
-//     );
-//     const questions = await QuestionSet2.find({ _id: { $in: questionIds } });
-
-//     // Create a dictionary to map question IDs to questions
-//     const questionDict = {};
-//     questions.forEach((question) => {
-//       questionDict[question._id] = question;
-//     });
-
-//     // Associate each answer with its corresponding question
-//     requestedTest.answers.forEach((answer) => {
-//       answer.question = questionDict[answer.questionId];
-//     });
-
-//     res.render("review", {
-//       requestedTest,
-//       testIndex,
-//       user,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching review:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
-// app.get("/info/:testIndex", async (req, res) => {
-//   try {
-//     const userId = req.session.user_id;
-//     const user = await User.findById(userId).populate("userInfo");
-
-//     if (!user || !user.userInfo || user.userInfo.length === 0) {
-//       return res.status(404).send("User or test information not found");
-//     }
-
-//     const userInfo = user.userInfo[0];
-
-//     const tests = userInfo.tests;
-
-//     const testIndex = req.params.testIndex;
-//     console.log(testIndex);
-
-//     if (testIndex >= tests.length) {
-//       return res.status(404).send("Test not found");
-//     }
-
-//     const requestedTest = tests[testIndex];
-//     // console.log(requestedTest);
-
-//     const questionIds = requestedTest.answers.map(
-//       (answer) => answer.questionId
-//     );
-//     // console.log(questionIds);
-//     const questions = await Question.find({ _id: { $in: questionIds } });
-//     // console.log(questions);
-//     const questionDict = {};
-//     questions.forEach((question) => {
-//       questionDict[question._id] = question;
-//     });
-//     console.log(questionDict);
-//     requestedTest.answers.forEach((answer) => {
-//       answer.question = questionDict[answer.questionId];
-//     });
-//     // console.log(answer.question);
-//     const index = { A: 0, B: 1, C: 2, D: 3 };
-
-//     res.render("review", {
-//       requestedTest,
-//       testIndex,
-//       user,
-//     });
-//     // res.send(user);
-//   } catch (error) {
-//     console.error("Error fetching review:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
-
 app.get("/classSelect", async (req, res) => {
   res.render("classSelect");
 });
@@ -653,20 +559,6 @@ app.get("/class/:className", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-
-// app.get("/allStudent", async (req, res) => {
-//   // 将路由路径更正为 /allStudent
-//   const userId = req.session.user_id;
-//   const user = await User.findById(userId);
-//   if (user.role !== "teacher") {
-//     // 如果不是老师，重定向到其他页面或显示错误消息
-//     return res.status(403).send("Forbidden");
-//   }
-
-//   const users = await User.find({});
-
-//   res.render("allStudent", { users, userId });
-// });
 
 app.get("/class/:className/:id", async (req, res) => {
   // 检查用户是否登录
