@@ -22,6 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({ secret: "notgood" }));
 app.use(methodOverride("_method"));
 app.use("/", exportRouter);
+// app.use("/", express.static(path.join(__dirname, "pic")));
 
 mongoose
   .connect("mongodb://localhost:27017/EE")
@@ -32,17 +33,11 @@ mongoose
     console.log(e);
   });
 
-const uploadDir = path.join(__dirname, "pic");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
-app.use("/pic", express.static(uploadDir));
-
 function getRandomQuestions(questions, num) {
   const selectedQuestions = [];
-  const shuffled = questions.sort(() => 0.5 - Math.random()); // 随机排序
+  const shuffled = questions.sort(() => 0.5 - Math.random());
   for (let i = 0; i < num; i++) {
-    selectedQuestions.push(shuffled[i]); // 选择前 num 个题目
+    selectedQuestions.push(shuffled[i]);
   }
   return selectedQuestions;
 }
@@ -174,13 +169,13 @@ app.post("/upload", async (req, res) => {
     if (user.role !== "teacher") {
       return res.status(403).send("Forbidden");
     }
-    const { question, options, answer, examType } = req.body;
+    const { question, options, answer, examType, imagePath } = req.body;
 
     const newQuestion = {
       question,
       options,
       answer,
-      imagePath: req.file ? req.file.path : null,
+      imagePath,
     };
     if (examType === "exam1") {
       await new QuestionSet1(newQuestion).save();
@@ -220,7 +215,7 @@ async function renderExamPage(req, res, examType, QuestionSet) {
       examType,
     });
     if (!selectQuestions) {
-      const randomQuestions = getRandomQuestions(questions, 3);
+      const randomQuestions = getRandomQuestions(questions, 10);
       selectQuestions = new SelectQuestion({
         userId: userId,
         questionIds: randomQuestions.map((question) => question._id),

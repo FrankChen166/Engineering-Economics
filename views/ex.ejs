@@ -16,12 +16,17 @@
           value="<%= question._id %>"
         />
         <p><%= question.question %></p>
+        <div>
+          <% if (question.imagePath) { %>
+          <img src="<%= question.imagePath %>" alt="Question Image" />
+          <% } %>
+        </div>
         <% const options = ['A', 'B', 'C', 'D']; %> <% const savedAnswer =
         savedAnswers.find(a => a.questionId === question._id.toString()); %> <%
         question.options.forEach((option, optionIndex) => { %> <input
         type="radio" id="<%= 'option-' + index + '-' + optionIndex %>"
-        name="answers[<%= index %>]" value="<%= options[optionIndex] %>"
-        onchange="handleRadioChange('<%= question._id %>',
+        name="answers[<%= index %>]" value="<%=options[optionIndex] %>"
+        onchange="handleRadioChange('<%=question._id%>',
         '<%=options[optionIndex] %>')" <%= savedAnswer && savedAnswer.userAnswer
         === options[optionIndex] ? 'checked' : '' %> />
         <label for="<%= 'option-' + index + '-' + optionIndex %>">

@@ -4,7 +4,7 @@ const questionSchema = new mongoose.Schema({
   question: { type: String, required: true },
   options: { type: [String], require: true },
   answer: { type: String, required: true },
-  imagePath: String,
+  imagePath: { type: String },
 });
 
 const QuestionSet1 = mongoose.model("QuestionSet1", questionSchema);

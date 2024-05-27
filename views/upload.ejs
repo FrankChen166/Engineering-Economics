@@ -9,19 +9,34 @@
   <body>
     <h1>Upload Questions</h1>
     <form action="/upload" method="POST" id="uploadForm">
-      <label for="question">Question:</label><br />
-      <input type="text" id="question" name="question" required /><br />
-      <label for="option1">Option 1:</label><br />
-      <input type="text" id="option1" name="options[]" required /><br />
-      <label for="option2">Option 2:</label><br />
-      <input type="text" id="option2" name="options[]" required /><br />
-      <label for="option3">Option 3:</label><br />
-      <input type="text" id="option3" name="options[]" required /><br />
-      <label for="option4">Option 4:</label><br />
-      <input type="text" id="option4" name="options[]" required /><br />
-      <label for="answer">Answer:</label><br />
-      <input type="text" id="answer" name="answer" required /><br />
-
+      <div>
+        <label for="question">Question:</label><br />
+        <input type="text" id="question" name="question" required /><br />
+      </div>
+      <div>
+        <label for="option1">Option 1:</label><br />
+        <input type="text" id="option1" name="options[]" required /><br />
+      </div>
+      <div>
+        <label for="option2">Option 2:</label><br />
+        <input type="text" id="option2" name="options[]" required /><br />
+      </div>
+      <div>
+        <label for="option3">Option 3:</label><br />
+        <input type="text" id="option3" name="options[]" required /><br />
+      </div>
+      <div>
+        <label for="option4">Option 4:</label><br />
+        <input type="text" id="option4" name="options[]" required /><br />
+      </div>
+      <div>
+        <label for="answer">Answer:</label><br />
+        <input type="text" id="answer" name="answer" required /><br />
+      </div>
+      <div>
+        <label for="imagePath">Image:</label>
+        <input type="text" id="image" name="imagePath" />
+      </div>
       <input type="hidden" name="examType" id="examType" value="" />
       <button type="button" onclick="uploadExam1()">上傳第一次作業</button>
       <button type="button" onclick="uploadExam2()">上傳第二次作業</button>
