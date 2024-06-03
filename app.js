@@ -505,11 +505,14 @@ app.get("/info/:testIndex", async (req, res) => {
     }
 
     const user = await User.findById(userId).populate("userInfo");
+    if (!user || !user.userInfo || user.userInfo.length === 0) {
+      return res.status(404).send("User or test information not found");
+    }
 
     const userInfo = user.userInfo[0];
     const tests = userInfo.tests;
     const testIndex = parseInt(req.params.testIndex, 10);
-    console.log(testIndex);
+
     if (isNaN(testIndex) || testIndex >= tests.length || testIndex < 0) {
       return res.status(404).send("Test not found");
     }
@@ -519,12 +522,26 @@ app.get("/info/:testIndex", async (req, res) => {
       (answer) => answer.questionId
     );
 
-    const QuestionModel = testIndex === 0 ? QuestionSet1 : QuestionSet2;
-    await getQuestionsAndPopulateAnswers(
-      QuestionModel,
-      questionIds,
-      requestedTest
-    );
+    // 根据测试类型选择模型
+    const QuestionModel =
+      requestedTest.examType === "exam1" ? QuestionSet1 : QuestionSet2;
+    const questions = await QuestionModel.find({ _id: { $in: questionIds } });
+
+    // 创建问题字典
+    const questionDict = {};
+    questions.forEach((question) => {
+      questionDict[question._id.toString()] = question;
+    });
+
+    // 关联每个答案与对应的问题
+    requestedTest.answers.forEach((answer) => {
+      const question = questionDict[answer.questionId.toString()];
+      answer.question = question || {
+        question: "Question not found",
+        options: [],
+        answer: "Answer not found",
+      };
+    });
 
     res.render("review", {
       requestedTest,

@@ -3,47 +3,74 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+
     <title>Exam</title>
   </head>
   <body>
-    <h1>Exam</h1>
-    <form id="submitForm" action="/<%= examType%>/submit" method="post">
-      <% selectedQuestionsContent.forEach((question, index) => { %>
-      <div>
-        <input
-          type="hidden"
-          name="questionIds[<%= index %>]"
-          value="<%= question._id %>"
-        />
-        <p><%= question.question %></p>
+    <div class="d-flex justify-content-center mb-3 mt-3"><h1>Exam</h1></div>
+    <div style="margin-left: 100px; margin-right: 100px">
+      <form id="submitForm" action="/<%= examType%>/submit" method="post">
+        <% selectedQuestionsContent.forEach((question, index) => { %>
         <div>
-          <% if (question.imagePath) { %>
-          <img src="<%= question.imagePath %>" alt="Question Image" />
-          <% } %>
+          <input
+            type="hidden"
+            name="questionIds[<%= index %>]"
+            value="<%= question._id %>"
+          />
+          <p><%= question.question %></p>
+          <div>
+            <% if (question.imagePath) { %>
+            <img
+              src="<%= question.imagePath %>"
+              alt="Question Image"
+              style="height: 200px"
+            />
+            <% } %>
+          </div>
+          <% const options = ['A', 'B', 'C', 'D']; %> <% const savedAnswer =
+          savedAnswers.find(a => a.questionId === question._id.toString()); %>
+          <% question.options.forEach((option, optionIndex) => { %>
+          <div class="form-check mb-3 option-spacing">
+            <input type="radio" id="<%= 'option-' + index + '-' + optionIndex
+            %>" name="answers[<%= index %>]" value="<%= options[optionIndex] %>"
+            onchange="handleRadioChange('<%= question._id %>',
+            '<%=options[optionIndex] %>') " <%= savedAnswer &&
+            savedAnswer.userAnswer === options[optionIndex] ? 'checked' : '' %>
+            class="form-check-input" />
+            <label
+              for="<%= 'option-' + index + '-' + optionIndex %>"
+              class="form-check-label"
+            >
+              <%= option %>
+            </label>
+          </div>
+
+          <% }); %>
+          <hr />
         </div>
-        <% const options = ['A', 'B', 'C', 'D']; %> <% const savedAnswer =
-        savedAnswers.find(a => a.questionId === question._id.toString()); %> <%
-        question.options.forEach((option, optionIndex) => { %> <input
-        type="radio" id="<%= 'option-' + index + '-' + optionIndex %>"
-        name="answers[<%= index %>]" value="<%=options[optionIndex] %>"
-        onchange="handleRadioChange('<%=question._id%>',
-        '<%=options[optionIndex] %>')" <%= savedAnswer && savedAnswer.userAnswer
-        === options[optionIndex] ? 'checked' : '' %> />
-        <label for="<%= 'option-' + index + '-' + optionIndex %>">
-          <%= option %>
-        </label>
-        <br />
+
         <% }); %>
-      </div>
-      <% }); %>
-      <input type="hidden" name="saveOnly" id="saveOnly" value="false" />
-      <button type="button" onclick="handleSaveProgress()">
-        Save Progress
-      </button>
-      <button type="button" name="saveOnly" onclick="handleSubmit()">
-        Submit
-      </button>
-    </form>
+
+        <input type="hidden" name="saveOnly" id="saveOnly" value="false" />
+        <button type="button" onclick="handleSaveProgress()">
+          Save Progress
+        </button>
+        <button type="button" name="saveOnly" onclick="handleSubmit()">
+          Submit
+        </button>
+      </form>
+    </div>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
 
     <script>
       const answersObject = {};
